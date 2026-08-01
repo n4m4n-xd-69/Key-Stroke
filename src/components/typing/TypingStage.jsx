@@ -1,7 +1,16 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { cx } from '../../lib/format.js';
 import { CHAR_STATE } from '../../lib/typing.js';
+
+/**
+ * Whether the stage has ever held focus this page load.
+ *
+ * Module scope on purpose: the hint is about the person, not the component, so
+ * it must not come back when the stage remounts on a new exercise or a mode
+ * switch. A reload is a new visitor as far as this is concerned.
+ */
+let hasFocusedOnceThisLoad = false;
 
 /* Pending text sits at full --ink-3 rather than a faded tint: at 55% it dropped
    below 3:1 on both surfaces and was genuinely hard to read ahead of the caret. */
@@ -30,12 +39,37 @@ export default function TypingStage({
   showLineNumbers = false,
   className,
   visibleLines = 6,
+  loading = false,
 }) {
   const wrapRef = useRef(null);
   const contentRef = useRef(null);
   const [caret, setCaret] = useState({ x: 0, y: 0, h: 0, w: 0 });
   const [shift, setShift] = useState(0);
   const [focused, setFocused] = useState(false);
+  const [hasFocusedOnce, setHasFocusedOnce] = useState(hasFocusedOnceThisLoad);
+  const [contentH, setContentH] = useState(0);
+
+  const markFocused = useCallback(() => {
+    hasFocusedOnceThisLoad = true;
+    setHasFocusedOnce(true);
+    setFocused(true);
+  }, []);
+
+  /* The arrival beat: a brief settle on the passage the moment loading ends, so
+     a swap that would otherwise happen between two frames is legible as "this
+     is new" rather than looking like the text glitched. */
+  const [popping, setPopping] = useState(false);
+  const wasLoading = useRef(loading);
+  useEffect(() => {
+    if (wasLoading.current && !loading) {
+      setPopping(true);
+      const t = setTimeout(() => setPopping(false), 480);
+      wasLoading.current = loading;
+      return () => clearTimeout(t);
+    }
+    wasLoading.current = loading;
+    return undefined;
+  }, [loading]);
 
   const { states, index, status, onKeyDown } = engine;
 
@@ -106,7 +140,32 @@ export default function TypingStage({
     return () => window.removeEventListener('keydown', onWindowKey);
   }, [focused, status, onKeyDown]);
 
-  const height = fontSize * lineHeight * visibleLines;
+  /**
+   * Measure what the passage actually occupies.
+   *
+   * The box used to be a fixed `visibleLines` tall regardless of content, so a
+   * two-line drill reserved room for six and the keyboard below it sat marooned
+   * at the bottom of a mostly empty panel. `visibleLines` is now a ceiling, not
+   * a fixed size: short passages shrink to fit and everything below them moves
+   * up, while long ones cap and scroll by shifting as before.
+   *
+   * ResizeObserver rather than a one-shot measure, because the height changes
+   * on reflow — a window resize, a font landing, or the rail expanding and
+   * narrowing the column all rewrap the text.
+   */
+  useLayoutEffect(() => {
+    const el = contentRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const measure = () => setContentH(el.scrollHeight);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [target, tokens, fontSize, lineHeight, showLineNumbers]);
+
+  const maxHeight = fontSize * lineHeight * visibleLines;
+  // One line of slack so a descender or the newline glyph never clips.
+  const height = contentH ? Math.min(maxHeight, contentH + fontSize * 0.35) : maxHeight;
 
   return (
     <div className={cx('relative', className)}>
@@ -117,7 +176,7 @@ export default function TypingStage({
         aria-label="Typing area"
         aria-describedby="typing-hint"
         onKeyDown={onKeyDown}
-        onFocus={() => setFocused(true)}
+        onFocus={markFocused}
         onBlur={() => setFocused(false)}
         onMouseDown={grabFocus}
         className="relative cursor-text overflow-hidden outline-none"
@@ -132,6 +191,7 @@ export default function TypingStage({
           className={cx(
             'relative font-mono whitespace-pre-wrap break-words',
             showLineNumbers && 'pl-4',
+            popping && 'pop-in',
             blindMode && 'opacity-0 transition-opacity duration-300 hover:opacity-100',
           )}
           style={{ fontSize, lineHeight }}
@@ -166,7 +226,32 @@ export default function TypingStage({
           <Passage target={target} tokens={tokens} states={states} />
         </motion.div>
 
-        {!focused && status !== 'done' ? (
+        {/* While fresh text is being written, the old passage stays readable
+            underneath a shimmer rather than being replaced by a skeleton: you
+            can keep typing the current one right up until the new one lands. */}
+        <AnimatePresence>
+          {loading ? (
+            <motion.div
+              key="shimmer"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="pointer-events-none absolute inset-0 z-[15] overflow-hidden"
+              aria-hidden
+            >
+              <div className="absolute inset-0 bg-bg/45 backdrop-blur-[1px]" />
+              <div className="shimmer-sweep absolute inset-y-0 w-[45%]" />
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+
+        {/* Shown once per page load, not on every blur. It is an instruction —
+            "press any key" — and once you have done that you know. Repeating it
+            every time focus drifted meant a dimmed, blurred passage covered by a
+            prompt telling you something you had already learned, several times a
+            session. Window keydown still wakes the stage regardless. */}
+        {!focused && !hasFocusedOnce && status !== 'done' ? (
           <button
             onMouseDown={grabFocus}
             className="absolute inset-0 z-20 grid place-items-center bg-surface/50 backdrop-blur-[2px] transition-opacity"

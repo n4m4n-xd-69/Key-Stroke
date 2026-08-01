@@ -283,6 +283,7 @@ export default function CodeTyping() {
           lineHeight={1.9}
           visibleLines={fullscreen ? fullscreenLines : 9}
           showLineNumbers
+          loading={generating}
         />
       </div>
     </>

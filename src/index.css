@@ -183,6 +183,45 @@
   }
 
   /**
+   * A band of light sweeping across a surface while it waits.
+   *
+   * Preferred to a skeleton here because the passage underneath stays readable
+   * — you can keep typing the current exercise right up until the new one
+   * lands, which a skeleton would make impossible.
+   */
+  .shimmer-sweep {
+    background: linear-gradient(
+      100deg,
+      transparent 0%,
+      rgb(var(--glass-edge) / 0.14) 45%,
+      rgb(var(--brand-solid) / 0.10) 55%,
+      transparent 100%
+    );
+    animation: shimmer-sweep 1.25s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+
+  @keyframes shimmer-sweep {
+    from { transform: translateX(-120%); }
+    to { transform: translateX(340%); }
+  }
+
+  /** The arrival beat once loading ends. Deliberately short and small: this is
+   *  punctuation, not an entrance. */
+  .pop-in {
+    animation: pop-in 0.48s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes pop-in {
+    from { opacity: 0.45; transform: scale(0.988); filter: blur(1.5px); }
+    to { opacity: 1; transform: scale(1); filter: blur(0); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .shimmer-sweep { animation: none; opacity: 0.5; }
+    .pop-in { animation: none; }
+  }
+
+  /**
    * Liquid glass.
    *
    * `.glass` is a flat translucent pane. This adds the two things that make

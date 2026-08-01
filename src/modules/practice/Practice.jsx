@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import Button, { IconButton } from '../../components/ui/Button.jsx';
 import Segmented from '../../components/ui/Segmented.jsx';
+import Select from '../../components/ui/Select.jsx';
 import Modal from '../../components/ui/Modal.jsx';
 import DecayCounter from '../../components/ui/DecayCounter.jsx';
 import { Card, Chip, ProgressBar, SectionTitle } from '../../components/ui/Primitives.jsx';
@@ -303,6 +304,7 @@ export default function Practice() {
       blindMode={settings.blindMode}
       fontSize={focus ? 26 : 22}
       visibleLines={focus ? 7 : 5}
+      loading={aiLoading}
     />
   );
 
@@ -325,7 +327,14 @@ export default function Practice() {
           <div className="shrink-0 border-b border-line px-2 py-1.5">{controls}</div>
 
           <div className="flex min-h-0 flex-1 gap-2 p-2">
-            <div className="flex min-w-0 flex-1 flex-col justify-center">
+            {/* `my-auto` on the child rather than `justify-center` on the
+                parent. justify-content: center distributes negative free space
+                too, so once the passage plus keyboard outgrew the column the
+                content bled *upward* and slid under the toolbar. Auto margins
+                resolve to zero when free space is negative, so the overflow
+                goes one way and the scroller takes it. */}
+            <div className="flex min-w-0 flex-1 flex-col overflow-y-auto no-scrollbar">
+              <div className="my-auto w-full shrink-0">
               <div className="mb-1.5 flex items-center justify-between gap-1 font-mono text-xs text-ink-3">
                 <span className="flex items-center gap-0.5">
                   <span className="h-0.5 w-0.5 rounded-full bg-brand-solid" aria-hidden />
@@ -341,11 +350,12 @@ export default function Practice() {
                   that filled its last visible line collided with the top row of
                   keys. A border plus real padding reserves the gap structurally
                   rather than relying on the stage never being full. */}
-              {settings.showKeyboard ? (
-                <div className="mt-4 hidden justify-center border-t border-line/60 pt-4 md:flex">
-                  <KeyboardViz nextChar={engine.nextChar} keyStats={stats.keyStats} />
-                </div>
-              ) : null}
+                {settings.showKeyboard ? (
+                  <div className="mt-4 hidden justify-center border-t border-line/60 pt-4 md:flex">
+                    <KeyboardViz nextChar={engine.nextChar} keyStats={stats.keyStats} />
+                  </div>
+                ) : null}
+              </div>
             </div>
 
             <aside className="hidden w-[260px] shrink-0 overflow-y-auto lg:block">{runPanel}</aside>
@@ -581,18 +591,13 @@ function Controls({
         />
       ) : null}
       {mode === 'drill' ? (
-        <select
+        <Select
+          label="Drill"
           value={drillId}
-          onChange={(e) => setDrillId(e.target.value)}
-          aria-label="Drill"
-          className="h-[30px] rounded-xs border border-line bg-surface px-1 text-xs font-bold"
-        >
-          {DRILLS.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.name}
-            </option>
-          ))}
-        </select>
+          onChange={setDrillId}
+          options={DRILLS.map((d) => ({ value: d.id, label: d.name }))}
+          minWidth={158}
+        />
       ) : null}
       {mode === 'custom' ? (
         <Button size="sm" icon={PenLine} onClick={onCustom}>

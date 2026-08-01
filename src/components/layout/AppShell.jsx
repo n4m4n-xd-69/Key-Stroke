@@ -354,8 +354,9 @@ export default function AppShell({ children }) {
   );
 }
 
-/** How long the tagline holds in the bar before retiring, in ms. */
-const TAGLINE_MS = 5000;
+/** Visible for this long, then away for this long, on repeat. */
+const TAGLINE_SHOW_MS = 15_000;
+const TAGLINE_HIDE_MS = 30_000;
 
 /**
  * The tagline, centred in the top bar on load and gone five seconds later.
@@ -375,10 +376,16 @@ function Tagline() {
   const reduce = useReducedMotionSafe();
   const [show, setShow] = useState(true);
 
+  /**
+   * Alternates on its own timer rather than one interval, so the visible and
+   * hidden spans can differ. The timeout is keyed to `show`, which means each
+   * phase schedules only the next one — no drift, and nothing to reconcile if a
+   * render lands mid-cycle.
+   */
   useEffect(() => {
-    const t = setTimeout(() => setShow(false), TAGLINE_MS);
+    const t = setTimeout(() => setShow((v) => !v), show ? TAGLINE_SHOW_MS : TAGLINE_HIDE_MS);
     return () => clearTimeout(t);
-  }, []);
+  }, [show]);
 
   return (
     <AnimatePresence>
@@ -386,10 +393,18 @@ function Tagline() {
         <motion.div
           key="tagline"
           aria-hidden
-          initial={reduce ? { opacity: 0 } : { opacity: 0, y: 10, filter: 'blur(4px)' }}
-          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-          exit={reduce ? { opacity: 0 } : { opacity: 0, y: -8, filter: 'blur(3px)' }}
-          transition={{ duration: reduce ? 0.2 : 0.55, ease: [0.16, 1, 0.3, 1] }}
+          // Rises from the bar's lower edge, settles dead centre, leaves through
+          // the top. The blur is what sells it as depth rather than a slide: it
+          // reads as the words resolving into focus as they arrive, and the
+          // header's overflow clip means both ends happen out of sight.
+          initial={reduce ? { opacity: 0 } : { opacity: 0, y: 26, filter: 'blur(6px)', scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, filter: 'blur(0px)', scale: 1 }}
+          exit={reduce ? { opacity: 0 } : { opacity: 0, y: -26, filter: 'blur(6px)', scale: 0.97 }}
+          transition={{
+            duration: reduce ? 0.2 : 0.85,
+            ease: [0.22, 1, 0.36, 1],
+            filter: { duration: reduce ? 0.2 : 0.6 },
+          }}
           className="pointer-events-none absolute inset-0 hidden items-center justify-center sm:flex"
         >
           <span className="whitespace-nowrap text-sm font-bold tracking-[0.01em] text-ink-3">
