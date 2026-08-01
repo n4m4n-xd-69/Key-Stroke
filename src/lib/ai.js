@@ -235,7 +235,7 @@ export async function generateSnippet(language, difficulty, { signal, avoid = []
  * Fresh practice text matched to the user's mode and difficulty. Called on
  * every load so the exercise is never the same twice.
  */
-export async function generatePassage({ mode, difficulty, words = 60, signal }) {
+export async function generatePassage({ mode, difficulty, words = 60, avoid = [], signal }) {
   const brief = {
     time: `a flowing paragraph of roughly ${words} common English words`,
     words: `roughly ${words} common English words as running prose`,
@@ -259,7 +259,22 @@ export async function generatePassage({ mode, difficulty, words = 60, signal }) 
         content:
           'You write text for a typing trainer. Plain prose only — no markdown, no line breaks, no emoji, no characters outside a standard keyboard. Reply with a single JSON object and nothing else.',
       },
-      { role: 'user', content: `Write ${brief}. ${spice} Respond as {"text": "...", "label": "3-5 word description"${mode === 'quote' ? ', "author": "name"' : ''}}.` },
+      {
+        role: 'user',
+        content:
+          `Write ${brief}. ${spice}` +
+          // Same mode and difficulty means an identical prompt every time, and
+          // temperature alone does not stop a model reaching for its favourite
+          // opening — practice kept serving variations on one paragraph. Naming
+          // what it just wrote, plus a throwaway seed, is what actually moves it.
+          (avoid.length
+            ? ` Choose a completely different subject from these recent ones, and do not reuse their opening words: ${avoid
+                .map((a) => `"${a}"`)
+                .join('; ')}.`
+            : '') +
+          ` Variation seed ${Math.random().toString(36).slice(2, 8)} — ignore its meaning, it exists only to push you somewhere new.` +
+          ` Respond as {"text": "...", "label": "3-5 word description"${mode === 'quote' ? ', "author": "name"' : ''}}.`,
+      },
     ],
     // hcnsec caps temperature at 1 and rejects anything above it with a 400
     // (`'temperature' value must be less or equal than 1`). This call used 1.1,

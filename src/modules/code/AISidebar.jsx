@@ -2,11 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   AlertTriangle, BookOpen, CheckCircle2, Gauge, GitBranch, Lightbulb, Maximize2,
-  Minimize2, RefreshCw, Sparkles, Wand2,
+  MessageSquare, Minimize2, RefreshCw, Sparkles, Wand2,
 } from 'lucide-react';
 import Button, { IconButton } from '../../components/ui/Button.jsx';
 import { Chip, Skeleton } from '../../components/ui/Primitives.jsx';
 import Markdown, { CodeBlock } from '../../components/ui/Markdown.jsx';
+import CodeChat from './CodeChat.jsx';
 import { AI_REASON_COPY, aiConfigured, analyseCode, clearAICache, optimiseCode } from '../../lib/ai.js';
 import { cx } from '../../lib/format.js';
 
@@ -16,6 +17,10 @@ const TABS = [
   { id: 'flow', label: 'Flow', icon: GitBranch },
   { id: 'complexity', label: 'Cost', icon: Gauge },
   { id: 'review', label: 'Review', icon: Lightbulb },
+  // Chat is last and deliberately separate: the five before it answer fixed
+  // questions in shapes built for them — a flow diagram, complexity cards, a
+  // rewrite — and this one takes everything they cannot.
+  { id: 'chat', label: 'Chat', icon: MessageSquare },
 ];
 
 /** Colour and glyph per flow-step kind, so the diagram reads without labels. */
@@ -80,7 +85,10 @@ export default function AISidebar({ code, language, languageName, expanded = fal
     }
   };
 
-  const degraded = analysis?.source === 'offline';
+  // Both of these describe the one-shot analysis, so they stay out of the way
+  // on the chat tab, which does not use it.
+  const onChat = tab === 'chat';
+  const degraded = !onChat && analysis?.source === 'offline';
   const reasonCopy = degraded ? (AI_REASON_COPY[analysis.reason] ?? AI_REASON_COPY.network) : null;
 
   return (
@@ -99,7 +107,9 @@ export default function AISidebar({ code, language, languageName, expanded = fal
               {reasonCopy.label}
             </Chip>
           ) : null}
-          <IconButton size="sm" label="Re-run analysis" icon={RefreshCw} onClick={() => load({ force: true })} />
+          {!onChat ? (
+            <IconButton size="sm" label="Re-run analysis" icon={RefreshCw} onClick={() => load({ force: true })} />
+          ) : null}
           {onToggleExpand ? (
             <IconButton
               size="sm"
@@ -144,6 +154,11 @@ export default function AISidebar({ code, language, languageName, expanded = fal
         ))}
       </nav>
 
+      {/* Chat owns its own scroller and composer, so it replaces the body
+          rather than sitting inside it. */}
+      {tab === 'chat' ? (
+        <CodeChat embedded code={code} language={language} languageName={languageName} />
+      ) : (
       <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
         {loading ? (
           <LoadingBody />
@@ -178,6 +193,7 @@ export default function AISidebar({ code, language, languageName, expanded = fal
           </AnimatePresence>
         )}
       </div>
+      )}
     </aside>
   );
 }

@@ -1,41 +1,33 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  ArrowDown, Brain, Check, Copy, Eraser, Gauge, GitBranch, Lightbulb, Maximize2,
-  Minimize2, Send, Sparkles, Square, Wand2,
+  ArrowDown, Brain, Check, Copy, Eraser, Maximize2, Minimize2, Send, Sparkles, Square,
 } from 'lucide-react';
 import Button, { IconButton } from '../../components/ui/Button.jsx';
 import { Chip, Skeleton } from '../../components/ui/Primitives.jsx';
 import Markdown from '../../components/ui/Markdown.jsx';
-import { aiConfigured } from '../../lib/ai.js';
+import { aiConfigured, suggestQuestions } from '../../lib/ai.js';
 import { useScrollAnchor, useStreamingChat } from '../../lib/useStreamingChat.js';
 import { useCopyToClipboard } from '../../lib/useCopyToClipboard.js';
 import { useReducedMotionSafe } from '../../lib/motion.js';
 import { cx } from '../../lib/format.js';
 
 /**
- * The code panel, as a conversation.
+ * Free-form conversation about the snippet on screen.
  *
- * This replaced a tabbed analysis view (Intro / Explain / Flow / Cost / Review).
- * Tabs answered five fixed questions well and every other question not at all,
- * and each tab re-read the same one-shot JSON blob — so "why is this O(n) and
- * not O(n log n)" had nowhere to go. The five tabs survive as quick actions
- * that seed the first message, which keeps them one click away while letting
- * the answer be argued with.
+ * This sits alongside the structured tabs rather than replacing them: the tabs
+ * answer their five fixed questions in a shape built for them — a flow diagram,
+ * complexity cards, a rewrite — and this handles everything they cannot, which
+ * is every other question. Openers are generated from the actual code, so the
+ * blank state offers something worth clicking rather than four generic prompts.
  *
  * The snippet is pinned into the system prompt rather than into a user turn, so
  * it stays in context as the transcript grows and never has to be re-pasted.
+ *
+ * `embedded` drops the header, for when a parent panel already provides one.
  */
 
-const QUICK = [
-  { id: 'explain', label: 'Explain', icon: Sparkles, prompt: 'Walk through this snippet step by step, in execution order. Name the exact construct on each line and say why it is there.' },
-  { id: 'flow', label: 'Flow', icon: GitBranch, prompt: 'Describe the control flow as a numbered sequence, calling out every branch and loop and what decides it.' },
-  { id: 'cost', label: 'Cost', icon: Gauge, prompt: 'What are the time and space complexities here? Name the construct that drives each, and say what would change them.' },
-  { id: 'review', label: 'Review', icon: Lightbulb, prompt: 'What do people typically get wrong with this pattern, and what would you improve in this specific code?' },
-  { id: 'optimise', label: 'Optimise', icon: Wand2, prompt: 'Rewrite this snippet to be clearer and faster where it genuinely helps. Show the rewrite in a fenced block, then list what changed and why. If it is already good, say so.' },
-];
-
-export default function CodeChat({ code, language, languageName, expanded = false, onToggleExpand }) {
+export default function CodeChat({ code, language, languageName, embedded = false, expanded = false, onToggleExpand }) {
   const reduce = useReducedMotionSafe();
   const ready = aiConfigured();
   const scrollRef = useRef(null);
@@ -77,6 +69,31 @@ export default function CodeChat({ code, language, languageName, expanded = fals
     setDraft('');
   }, [code, setMessages]);
 
+  /**
+   * Openers drawn from this snippet, not a fixed list.
+   *
+   * `suggestQuestions` is cached per code hash and falls back to a locally
+   * derived set when no provider answers, so the blank state always has
+   * something to offer — including with no key and no network.
+   */
+  const [openers, setOpeners] = useState([]);
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+    setOpeners([]);
+    suggestQuestions(code, languageName, { signal: controller.signal })
+      .then((qs) => {
+        if (!cancelled) setOpeners(Array.isArray(qs) ? qs : []);
+      })
+      .catch(() => {
+        /* aborted, or nothing to suggest — the empty state copes */
+      });
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [code, languageName]);
+
   const atBottom = useScrollAnchor({
     scrollRef,
     endRef,
@@ -97,52 +114,58 @@ export default function CodeChat({ code, language, languageName, expanded = fals
     setDraft('');
   };
 
-  return (
-    <aside className="flex h-full flex-col overflow-hidden rounded-lg border border-line bg-surface">
-      <header className="flex shrink-0 items-center gap-1 border-b border-line px-2 py-1.5">
-        <span className="grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[8px] bg-brand-wash text-brand">
-          <Sparkles size={14} strokeWidth={2.4} aria-hidden />
-        </span>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-extrabold leading-tight">Ask about this code</p>
-          <p className="truncate text-2xs text-ink-3">{languageName}</p>
-        </div>
-        <div className="ml-auto flex shrink-0 items-center gap-0.5">
-          {!ready ? <Chip tone="warn">no key</Chip> : null}
-          {messages.length ? (
-            <IconButton size="sm" label="Clear conversation" icon={Eraser} onClick={() => setMessages([])} />
-          ) : null}
-          {onToggleExpand ? (
-            <IconButton
-              size="sm"
-              label={expanded ? 'Shrink panel' : 'Expand panel'}
-              icon={expanded ? Minimize2 : Maximize2}
-              onClick={onToggleExpand}
-              className="hidden xl:inline-flex"
-            />
-          ) : null}
-        </div>
-      </header>
+  const Shell = embedded ? 'div' : 'aside';
 
-      {/* Quick actions stay visible rather than living only in the empty state —
-          they are the fastest route back after a tangent. */}
-      <div className="flex shrink-0 flex-wrap gap-0.5 border-b border-line px-1.5 py-1">
-        {QUICK.map((q) => (
+  return (
+    <Shell
+      className={cx(
+        'flex h-full min-h-0 flex-col overflow-hidden',
+        !embedded && 'rounded-lg border border-line bg-surface',
+      )}
+    >
+      {!embedded ? (
+        <header className="flex shrink-0 items-center gap-1 border-b border-line px-2 py-1.5">
+          <span className="grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[8px] bg-brand-wash text-brand">
+            <Sparkles size={14} strokeWidth={2.4} aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-extrabold leading-tight">Ask about this code</p>
+            <p className="truncate text-2xs text-ink-3">{languageName}</p>
+          </div>
+          <div className="ml-auto flex shrink-0 items-center gap-0.5">
+            {!ready ? <Chip tone="warn">no key</Chip> : null}
+            {messages.length ? (
+              <IconButton size="sm" label="Clear conversation" icon={Eraser} onClick={() => setMessages([])} />
+            ) : null}
+            {onToggleExpand ? (
+              <IconButton
+                size="sm"
+                label={expanded ? 'Shrink panel' : 'Expand panel'}
+                icon={expanded ? Minimize2 : Maximize2}
+                onClick={onToggleExpand}
+                className="hidden xl:inline-flex"
+              />
+            ) : null}
+          </div>
+        </header>
+      ) : null}
+
+      {embedded && messages.length ? (
+        <div className="flex shrink-0 justify-end border-b border-line px-1 py-0.5">
           <button
-            key={q.id}
             type="button"
-            disabled={!ready || busy}
-            onClick={() => ask(q.prompt)}
-            className="flex items-center gap-0.5 rounded-xs px-1 py-0.5 text-2xs font-extrabold uppercase tracking-[0.05em] text-ink-3 transition-colors hover:bg-subtle hover:text-ink disabled:pointer-events-none disabled:opacity-40"
+            onClick={() => setMessages([])}
+            className="flex items-center gap-0.5 rounded-xs px-1 py-0.5 text-2xs font-bold text-ink-3 transition-colors hover:bg-subtle hover:text-ink-2"
           >
-            <q.icon size={11} strokeWidth={2.4} aria-hidden />
-            {q.label}
+            <Eraser size={11} aria-hidden /> Clear
           </button>
-        ))}
-      </div>
+        </div>
+      ) : null}
 
       <div ref={scrollRef} className="relative min-h-0 flex-1 space-y-2 overflow-y-auto px-2 py-2">
-        {messages.length === 0 && !busy ? <Empty ready={ready} reduce={reduce} /> : null}
+        {messages.length === 0 && !busy ? (
+          <Empty ready={ready} reduce={reduce} openers={openers} onPick={ask} />
+        ) : null}
 
         {messages.map((m, i) => (
           <Bubble key={i} message={m} language={language} />
@@ -194,7 +217,7 @@ export default function CodeChat({ code, language, languageName, expanded = fals
           <Button type="submit" size="sm" variant="brand" icon={Send} disabled={!ready || !draft.trim()} aria-label="Send" />
         )}
       </form>
-    </aside>
+    </Shell>
   );
 }
 
@@ -262,26 +285,49 @@ function Live({ thinking, partial }) {
   );
 }
 
-function Empty({ ready, reduce }) {
+function Empty({ ready, reduce, openers, onPick }) {
   return (
     <AnimatePresence>
       <motion.div
         initial={reduce ? false : { opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25 }}
-        className="px-1 py-3 text-center"
+        className="px-1 py-3"
       >
-        <span className="mx-auto grid h-[38px] w-[38px] place-items-center rounded-lg bg-brand-wash text-brand">
-          <Sparkles size={18} aria-hidden />
-        </span>
-        <p className="mt-1.5 text-sm font-extrabold">
-          {ready ? 'What do you want to know?' : 'AI is not configured'}
-        </p>
-        <p className="mx-auto mt-0.5 max-w-[34ch] text-xs leading-relaxed text-ink-3">
-          {ready
-            ? 'Pick a quick action above, or ask anything about the snippet you are typing.'
-            : 'Set a provider key in .env.local to turn this on. Typing works without it.'}
-        </p>
+        <div className="text-center">
+          <span className="mx-auto grid h-[38px] w-[38px] place-items-center rounded-lg bg-brand-wash text-brand">
+            <Sparkles size={18} aria-hidden />
+          </span>
+          <p className="mt-1.5 text-sm font-extrabold">
+            {ready ? 'Ask about this snippet' : 'AI is not configured'}
+          </p>
+          <p className="mx-auto mt-0.5 max-w-[34ch] text-xs leading-relaxed text-ink-3">
+            {ready
+              ? 'These are drawn from the code on screen.'
+              : 'Set a provider key in .env.local to turn this on. Typing works without it.'}
+          </p>
+        </div>
+
+        {ready ? (
+          <div className="mt-2 space-y-1">
+            {openers.length
+              ? openers.map((q, i) => (
+                  <motion.button
+                    key={q}
+                    type="button"
+                    onClick={() => onPick(q)}
+                    initial={reduce ? false : { opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: reduce ? 0 : 0.05 * i, duration: 0.25 }}
+                    whileHover={reduce ? undefined : { x: 2 }}
+                    className="block w-full rounded-sm border border-line px-1.5 py-1 text-left text-xs font-semibold leading-relaxed text-ink-2 transition-colors hover:border-line-strong hover:bg-subtle hover:text-ink"
+                  >
+                    {q}
+                  </motion.button>
+                ))
+              : [0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-4 w-full" />)}
+          </div>
+        ) : null}
       </motion.div>
     </AnimatePresence>
   );

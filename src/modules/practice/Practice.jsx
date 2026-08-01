@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Clock, Eye, EyeOff, Hash, Keyboard as KeyboardIcon, KeyboardOff, Leaf, Maximize2,
@@ -86,6 +86,13 @@ export default function Practice() {
   const [aiText, setAiText] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
 
+  /**
+   * The openings of recent AI passages, so the next request can be told what
+   * not to write again. A ref rather than state: it must survive the effect
+   * re-running without itself triggering another run.
+   */
+  const recentPassages = useRef([]);
+
   useEffect(() => {
     if (!settings.aiText || mode === 'custom' || mode === 'drill') {
       setAiText(null);
@@ -100,11 +107,15 @@ export default function Practice() {
       mode,
       difficulty,
       words: mode === 'time' ? Math.max(60, duration * 2) : mode === 'words' ? wordCount : 70,
+      // Openings only. The full text would eat the context window and pushes
+      // the model toward paraphrasing what it is shown rather than avoiding it.
+      avoid: recentPassages.current.slice(-4),
       signal: controller.signal,
     })
       .then((res) => {
         if (controller.signal.aborted) return;
         const label = mode === 'quote' && res.author ? `— ${res.author}` : res.label;
+        recentPassages.current = [...recentPassages.current, res.text.slice(0, 70)].slice(-8);
         setAiText({ text: res.text, meta: `${label} · fresh` });
       })
       .catch(() => {

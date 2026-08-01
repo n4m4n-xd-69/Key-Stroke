@@ -12,7 +12,7 @@ import TypingStage from '../../components/typing/TypingStage.jsx';
 import SessionSummary from '../../components/typing/SessionSummary.jsx';
 import LiveStats from '../../components/typing/LiveStats.jsx';
 import useTypingEngine from '../../components/typing/useTypingEngine.js';
-import CodeChat from './CodeChat.jsx';
+import AISidebar from './AISidebar.jsx';
 import { useStore, useStats } from '../../lib/store.jsx';
 import { useToast } from '../../components/ui/Toast.jsx';
 import { DIFFICULTIES, LANGUAGES, LANGUAGE_BY_ID, snippetsFor } from '../../lib/content.js';
@@ -305,7 +305,7 @@ export default function CodeTyping() {
   );
 
   const chat = (
-    <CodeChat
+    <AISidebar
       code={snippet.code}
       language={languageId}
       languageName={language.name}
