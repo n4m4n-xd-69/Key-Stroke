@@ -92,8 +92,11 @@ const ANALYSIS_SHAPE = `{
   "intro": "2-4 sentences: what this program is, what problem it solves, how it works end to end, and which language features it leans on.",
   "summary": "one sentence, under 140 characters",
   "explanation": ["5 to 8 steps in execution order. Name the exact construct in markdown backticks. Explain WHY each line exists."],
+  "examples": [
+    {"title": "3-5 words naming the case", "input": "a concrete call or input value, in code", "output": "what it evaluates to or prints, in code", "note": "one short sentence on why this case is worth seeing"}
+  ],
   "flow": [
-    {"id": "n1", "step": "short label, 2-4 words", "detail": "one or two sentences", "kind": "start|process|decision|loop|output|end", "next": ["n2"], "branch": "label for a decision edge, else empty"}
+    {"id": "n1", "step": "short label, 2-4 words", "detail": "one or two sentences", "kind": "start|process|decision|loop|output|end", "next": ["n2"], "branch": "label for a decision edge, else empty", "example": "a concrete value at this step wrapped in markdown backticks, such as i = 2 or res.ok === false. Empty string if nothing meaningful."}
   ],
   "timeComplexity": {"value": "O(n)", "why": "2 sentences naming which construct drives the growth"},
   "spaceComplexity": {"value": "O(1)", "why": "2 sentences naming what is allocated"},
@@ -116,7 +119,7 @@ export async function analyseCode(code, language, { signal } = {}) {
             },
             {
               role: 'user',
-              content: `Analyse this ${language} snippet. The "flow" array is a directed graph: give each node an id, and list the ids it leads to in "next". Use "decision" for branches and give each outgoing edge a "branch" label. Respond in exactly this JSON shape:\n${ANALYSIS_SHAPE}\n\n\`\`\`${language}\n${code}\n\`\`\``,
+              content: `Analyse this ${language} snippet. The "flow" array is a directed graph: give each node an id, and list the ids it leads to in "next". Use "decision" for branches and give each outgoing edge a "branch" label, and put a concrete value at that step in "example". Give 2-3 worked "examples" with real inputs and the outputs they actually produce — a normal case and at least one edge case. Respond in exactly this JSON shape:\n${ANALYSIS_SHAPE}\n\n\`\`\`${language}\n${code}\n\`\`\``,
             },
           ],
           { maxTokens: 2200, temperature: 0.3, signal },
@@ -359,6 +362,7 @@ function localAnalysis(code, language) {
     kind: i === 0 ? 'start' : /return|print|console|cout|System\.out/.test(l) ? 'output' : /if|switch|match/.test(l) ? 'decision' : /for|while/.test(l) ? 'loop' : 'process',
     next: i < arr.length - 1 ? [`n${i + 1}`] : [],
     branch: '',
+    example: '',
   }));
 
   return {
@@ -370,6 +374,10 @@ function localAnalysis(code, language) {
       loops ? 'Work scales with the size of the input collection.' : 'No iteration — the work is constant.',
       recursive ? 'A recursive shape is present, so check the base case first.' : 'Control flow is linear through the body.',
     ],
+    // No worked examples offline: running the snippet is the only honest way to
+    // know what it returns, and inventing plausible-looking output for a
+    // learner to trust would be worse than showing nothing.
+    examples: [],
     flow,
     timeComplexity: { value: time, why: nested ? 'Nested iteration over the input.' : loops ? 'One pass over the input.' : 'No input-dependent work.' },
     spaceComplexity: { value: /\[\]|\{\}|new (Array|Map|Set|List)/.test(code) ? 'O(n)' : 'O(1)', why: 'Estimated from the allocations in the source.' },

@@ -1,18 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  AlertTriangle, BookOpen, CheckCircle2, Gauge, GitBranch, Lightbulb, Maximize2,
+  AlertTriangle, CheckCircle2, Gauge, GitBranch, Lightbulb, Maximize2,
   MessageSquare, Minimize2, RefreshCw, Sparkles, Wand2,
 } from 'lucide-react';
 import Button, { IconButton } from '../../components/ui/Button.jsx';
 import { Chip, Skeleton } from '../../components/ui/Primitives.jsx';
 import Markdown, { CodeBlock } from '../../components/ui/Markdown.jsx';
 import CodeChat from './CodeChat.jsx';
-import { AI_REASON_COPY, aiConfigured, analyseCode, clearAICache, optimiseCode } from '../../lib/ai.js';
+import { AI_REASON_COPY, aiConfigured, optimiseCode } from '../../lib/ai.js';
 import { cx } from '../../lib/format.js';
 
+// Intro is deliberately absent: it moved to the block above the code, beside
+// the snippet's name, where the briefing belongs before you start typing.
 const TABS = [
-  { id: 'intro', label: 'Intro', icon: BookOpen },
   { id: 'explain', label: 'Explain', icon: Sparkles },
   { id: 'flow', label: 'Flow', icon: GitBranch },
   { id: 'complexity', label: 'Cost', icon: Gauge },
@@ -32,44 +33,25 @@ const FLOW_KIND = {
   output: { ring: 'bg-good', label: 'output' },
 };
 
-export default function AISidebar({ code, language, languageName, expanded = false, onToggleExpand }) {
-  const [analysis, setAnalysis] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState('intro');
+export default function AISidebar({
+  code, language, languageName, analysis, loading, onReload, expanded = false, onToggleExpand,
+}) {
+  const [tab, setTab] = useState('explain');
   const [optimised, setOptimised] = useState(null);
   const [optimising, setOptimising] = useState(false);
   const [optimiseError, setOptimiseError] = useState(null);
-  const abortRef = useRef(null);
 
-  const load = useCallback(
-    async ({ force = false } = {}) => {
-      abortRef.current?.abort();
-      const controller = new AbortController();
-      abortRef.current = controller;
-
-      if (force) clearAICache();
-      setLoading(true);
-      setOptimised(null);
-      setOptimiseError(null);
-
-      try {
-        const data = await analyseCode(code, languageName, { signal: controller.signal });
-        if (!controller.signal.aborted) setAnalysis(data);
-      } catch {
-        // `analyseCode` now rethrows aborts so the shared in-flight entry is
-        // dropped rather than reused. An abort means a newer run has taken
-        // over, so there is nothing to show and nothing to report.
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    },
-    [code, languageName],
-  );
-
+  /* A rewrite belongs to the snippet it rewrote. */
   useEffect(() => {
-    load();
-    return () => abortRef.current?.abort();
-  }, [load]);
+    setOptimised(null);
+    setOptimiseError(null);
+  }, [code]);
+
+  const load = useCallback(({ force = false } = {}) => {
+    setOptimised(null);
+    setOptimiseError(null);
+    onReload?.({ force });
+  }, [onReload]);
 
   const runOptimise = async () => {
     setOptimising(true);
@@ -174,7 +156,6 @@ export default function AISidebar({ code, language, languageName, expanded = fal
               transition={{ duration: 0.18 }}
               className={cx('space-y-2', expanded && 'mx-auto max-w-[70ch]')}
             >
-              {tab === 'intro' ? <IntroTab analysis={analysis} language={language} code={code} /> : null}
               {tab === 'explain' ? <ExplainTab analysis={analysis} language={language} /> : null}
               {tab === 'flow' ? <FlowTab analysis={analysis} language={language} /> : null}
               {tab === 'complexity' ? <ComplexityTab analysis={analysis} language={language} /> : null}
@@ -199,30 +180,6 @@ export default function AISidebar({ code, language, languageName, expanded = fal
 }
 
 /* ── Tabs ──────────────────────────────────────────────────────────────── */
-
-/** "How this program works" — the orientation you get before typing it. */
-function IntroTab({ analysis, language, code }) {
-  const lines = code.split('\n').length;
-  const chars = code.length;
-
-  return (
-    <>
-      <Block title="How this program works">
-        <Markdown text={analysis.intro ?? analysis.summary} language={language} />
-      </Block>
-
-      <div className="grid grid-cols-3 gap-1">
-        <Fact label="Lines" value={lines} />
-        <Fact label="Chars" value={chars} />
-        <Fact label="Time" value={analysis.timeComplexity?.value ?? '—'} />
-      </div>
-
-      <Block title="In one sentence">
-        <Markdown text={analysis.summary} language={language} />
-      </Block>
-    </>
-  );
-}
 
 function ExplainTab({ analysis, language }) {
   const steps = analysis.explanation ?? [];
@@ -279,8 +236,20 @@ function FlowTab({ analysis, language }) {
               <div className="flex items-center gap-1">
                 <p className="text-sm font-extrabold">{s.step}</p>
                 <span className="text-2xs font-bold uppercase tracking-[0.08em] text-ink-3">{kind.label}</span>
+                {s.branch ? <Chip tone="outline">{s.branch}</Chip> : null}
               </div>
               <Markdown text={s.detail} language={language} compact className="mt-px" />
+              {/* A concrete value at this step. "Increments the counter" and
+                  "i = 2" teach different things; the second is the one that
+                  makes a loop click. */}
+              {s.example ? (
+                <div className="mt-1 flex items-start gap-1 rounded-sm border border-line bg-subtle/50 px-1 py-0.5">
+                  <span className="mt-px shrink-0 text-2xs font-extrabold uppercase tracking-[0.07em] text-ink-3">
+                    e.g.
+                  </span>
+                  <Markdown text={s.example} language={language} compact className="min-w-0 flex-1 text-xs" />
+                </div>
+              ) : null}
             </motion.li>
           );
         })}
@@ -322,29 +291,54 @@ function ComplexityTab({ analysis, language }) {
   );
 }
 
+/**
+ * Review leads with the rewrite.
+ *
+ * The prose used to come first and the button sat under two lists, so pressing
+ * it scrolled the result out of sight — you asked for a rewrite and got a wall
+ * of text where the code should have been. The code is the answer, so it goes
+ * at the top; the mistakes and improvements are the commentary and follow it.
+ */
 function ReviewTab({ analysis, language, optimised, optimising, error, onOptimise, canOptimise }) {
   return (
     <>
-      <Block title="Common mistakes">
-        <List items={analysis.commonMistakes} icon={AlertTriangle} tone="text-warn" language={language} />
-      </Block>
-      <Block title="Suggested improvements">
-        <List items={analysis.improvements} icon={Lightbulb} tone="text-info" language={language} />
-      </Block>
+      {optimised ? (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-1">
+          <div className="flex items-center justify-between gap-1">
+            <p className="text-2xs font-extrabold uppercase tracking-[0.09em] text-ink-3">Rewritten</p>
+            <Button size="sm" variant="ghost" icon={Wand2} onClick={onOptimise} disabled={optimising}>
+              Again
+            </Button>
+          </div>
+          <CodeBlock code={optimised.code} language={language} className="max-h-[300px]" />
+          {optimised.verdict ? (
+            <Markdown text={optimised.verdict} language={language} compact className="italic" />
+          ) : null}
+          <List items={optimised.changes} icon={CheckCircle2} tone="text-good" language={language} />
+        </motion.div>
+      ) : (
+        <Button
+          variant="brand"
+          size="sm"
+          icon={Wand2}
+          className="w-full"
+          onClick={onOptimise}
+          disabled={optimising || !canOptimise}
+        >
+          {optimising ? 'Optimising…' : 'Optimise this snippet'}
+        </Button>
+      )}
 
-      <Button
-        variant="brand"
-        size="sm"
-        icon={Wand2}
-        className="w-full"
-        onClick={onOptimise}
-        disabled={optimising || !canOptimise}
-      >
-        {optimising ? 'Optimising…' : 'Optimise this snippet'}
-      </Button>
+      {optimising && !optimised ? (
+        <div className="space-y-1">
+          <Skeleton className="h-2 w-full" />
+          <Skeleton className="h-2 w-[88%]" />
+          <Skeleton className="h-2 w-[72%]" />
+        </div>
+      ) : null}
 
       {!canOptimise ? (
-        <p className="text-2xs text-ink-3">Add an OpenRouter key in src/lib/config.js to enable this.</p>
+        <p className="text-2xs text-ink-3">Set a provider key in .env.local to enable this.</p>
       ) : null}
 
       {error ? (
@@ -357,16 +351,12 @@ function ReviewTab({ analysis, language, optimised, optimising, error, onOptimis
         </div>
       ) : null}
 
-      {optimised ? (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-1">
-          <p className="text-2xs font-extrabold uppercase tracking-[0.09em] text-ink-3">Rewritten</p>
-          <CodeBlock code={optimised.code} language={language} className="max-h-[260px]" />
-          <List items={optimised.changes} icon={CheckCircle2} tone="text-good" language={language} />
-          {optimised.verdict ? (
-            <Markdown text={optimised.verdict} language={language} compact className="italic" />
-          ) : null}
-        </motion.div>
-      ) : null}
+      <Block title="Common mistakes">
+        <List items={analysis.commonMistakes} icon={AlertTriangle} tone="text-warn" language={language} />
+      </Block>
+      <Block title="Suggested improvements">
+        <List items={analysis.improvements} icon={Lightbulb} tone="text-info" language={language} />
+      </Block>
     </>
   );
 }
@@ -379,15 +369,6 @@ function Block({ title, children }) {
       <h3 className="mb-1 text-2xs font-extrabold uppercase tracking-[0.09em] text-ink-3">{title}</h3>
       {children}
     </section>
-  );
-}
-
-function Fact({ label, value }) {
-  return (
-    <div className="rounded-sm border border-line px-1 py-1 text-center">
-      <p className="font-mono text-base font-bold tnum">{value}</p>
-      <p className="text-2xs font-bold uppercase tracking-[0.07em] text-ink-3">{label}</p>
-    </div>
   );
 }
 

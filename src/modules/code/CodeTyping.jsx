@@ -5,14 +5,17 @@ import {
   ChevronDown, Maximize2, Minimize2, PanelRightClose, PanelRightOpen, RotateCcw,
   SkipForward, Sparkles,
 } from 'lucide-react';
-import { IconButton } from '../../components/ui/Button.jsx';
+import Button, { IconButton } from '../../components/ui/Button.jsx';
 import Segmented from '../../components/ui/Segmented.jsx';
-import { Card, Chip, ProgressBar } from '../../components/ui/Primitives.jsx';
+import Select from '../../components/ui/Select.jsx';
+import Markdown from '../../components/ui/Markdown.jsx';
+import { Card, Chip, ProgressBar, Skeleton } from '../../components/ui/Primitives.jsx';
 import TypingStage from '../../components/typing/TypingStage.jsx';
 import SessionSummary from '../../components/typing/SessionSummary.jsx';
 import LiveStats from '../../components/typing/LiveStats.jsx';
 import useTypingEngine from '../../components/typing/useTypingEngine.js';
 import AISidebar from './AISidebar.jsx';
+import useCodeAnalysis from './useCodeAnalysis.js';
 import { useStore, useStats } from '../../lib/store.jsx';
 import { useToast } from '../../components/ui/Toast.jsx';
 import { DIFFICULTIES, LANGUAGES, LANGUAGE_BY_ID, snippetsFor } from '../../lib/content.js';
@@ -39,11 +42,6 @@ export default function CodeTyping() {
   const [railOpen, setRailOpen] = useState(true);
   const [railExpanded, setRailExpanded] = useState(false);
   const [result, setResult] = useState(null);
-  /* Selection is always an explicit snippet title — no random option. Seeded
-     from the same snippet the stage opens with rather than null: a controlled
-     <select value={null}> makes React warn and treats the element as
-     uncontrolled for its first render. */
-  const [selection, setSelection] = useState(() => snippetsFor(languageId, 'normal')[0]?.title ?? '');
   const [focus, setFocus] = useState(false);
 
   const introOpen = state.settings.codeIntroOpen !== false;
@@ -103,7 +101,6 @@ export default function CodeTyping() {
   useEffect(() => {
     const first = snippetsFor(languageId, difficulty)[0];
     setSnippet(first);
-    setSelection(first.title);
     setResult(null);
     setSetting('lastLanguage', languageId);
   }, [languageId, difficulty, setSetting]);
@@ -117,6 +114,10 @@ export default function CodeTyping() {
     () => tokenizeToChars(snippet.code, language.prism),
     [snippet.code, language.prism],
   );
+
+  /* Owned here so the intro above the code and the tabs beside it render the
+     same reading, settling together rather than independently. */
+  const { analysis, loading: analysing, reload: reloadAnalysis } = useCodeAnalysis(snippet.code, language.name);
 
   const onFinish = useCallback(
     (run) => {
@@ -152,7 +153,6 @@ export default function CodeTyping() {
     (title) => {
       const found = available.find((s) => s.title === title);
       if (!found) return;
-      setSelection(title);
       setSnippet(found);
       setResult(null);
       clearFresh();
@@ -171,7 +171,6 @@ export default function CodeTyping() {
     try {
       const fresh = await generateSnippet(language.name, difficulty);
       setSnippet({ ...fresh, difficulty, language: languageId, intro: fresh.intro ?? 'Generated for this session.' });
-      setSelection(fresh.title);
       setResult(null);
       clearFresh();
       toast('Fresh snippet generated', { tone: 'success' });
@@ -193,29 +192,19 @@ export default function CodeTyping() {
 
   const toolbar = (
     <div className="flex flex-wrap items-center gap-1">
-            {/* Language is a dropdown now — eleven chips ate a whole row and
-                pushed the code below the fold. */}
-            <label className="flex items-center gap-0.5">
-              <span className="sr-only">Language</span>
-              <span
-                className="grid h-[26px] w-[26px] place-items-center rounded-[7px] font-mono text-2xs font-extrabold text-white"
-                style={{ background: language.hue }}
-                aria-hidden
-              >
-                {language.icon}
-              </span>
-              <select
-                value={languageId}
-                onChange={(e) => setLanguageId(e.target.value)}
-                className="h-[30px] rounded-xs border border-line bg-surface px-1 text-xs font-bold"
-              >
-                {LANGUAGES.map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <span
+              className="grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[8px] font-mono text-2xs font-extrabold text-white"
+              style={{ background: language.hue }}
+              aria-hidden
+            >
+              {language.icon}
+            </span>
+            <Select
+              label="Language"
+              value={languageId}
+              onChange={setLanguageId}
+              options={LANGUAGES.map((l) => ({ value: l.id, label: l.name, swatch: l.hue }))}
+            />
 
             <span className="mx-0.5 hidden h-2 w-px bg-line sm:block" aria-hidden />
 
@@ -227,36 +216,28 @@ export default function CodeTyping() {
               onChange={setDifficulty}
             />
 
-            {/* Explicit snippet selection. */}
-            <label className="flex items-center gap-1">
-              <span className="sr-only">Snippet</span>
-              <select
-                value={selection}
-                onChange={(e) => choose(e.target.value)}
-                className="h-[30px] max-w-[190px] rounded-xs border border-line bg-surface px-1 text-xs font-bold"
-              >
-                {available.map((s) => (
-                  <option key={s.title} value={s.title}>
-                    {s.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-
             {/* Every snippet action lives in one icon cluster. Full-width
                 labelled buttons sat between the intro and the code and pushed
                 the snippet itself below the fold, which is the wrong thing to
                 spend vertical space on in a typing surface. */}
             <div className="ml-auto flex items-center gap-0.5">
-              <IconButton
+              {/* Labelled, because a bare sparkle and a bare skip glyph do not
+                  say what they do — but kept to one word each so they stay in
+                  the toolbar instead of claiming a row of their own. */}
+              <Button
                 size="sm"
-                label={aiConfigured() ? 'Generate a fresh snippet with AI' : 'Set a provider key in .env.local to enable'}
+                variant="ghost"
                 icon={Sparkles}
                 onClick={generate}
                 disabled={generating || !aiConfigured()}
+                title={aiConfigured() ? 'Generate a fresh snippet with AI' : 'Set a provider key in .env.local to enable'}
                 className={cx('text-brand', generating && 'animate-pulse')}
-              />
-              <IconButton size="sm" label="Next snippet" icon={SkipForward} onClick={nextSnippet} />
+              >
+                {generating ? 'Generating' : 'AI'}
+              </Button>
+              <Button size="sm" variant="ghost" icon={SkipForward} onClick={nextSnippet} title="Next snippet">
+                Next
+              </Button>
               <span className="mx-0.5 h-2 w-px bg-line" aria-hidden />
               <IconButton size="sm" label="Restart snippet" icon={RotateCcw} onClick={() => engine.reset()} />
               <IconButton
@@ -284,6 +265,9 @@ export default function CodeTyping() {
         snippet={snippet}
         difficulty={difficulty}
         typed={engine.index}
+        language={languageId}
+        analysis={analysis}
+        loading={analysing}
         open={introOpen}
         onToggle={() => setSetting('codeIntroOpen', !introOpen)}
       />
@@ -309,6 +293,9 @@ export default function CodeTyping() {
       code={snippet.code}
       language={languageId}
       languageName={language.name}
+      analysis={analysis}
+      loading={analysing}
+      onReload={reloadAnalysis}
       expanded={railExpanded}
       onToggleExpand={() => setRailExpanded((v) => !v)}
     />
@@ -402,8 +389,8 @@ export default function CodeTyping() {
    the code — title, topic, difficulty, progress — and removes only the
    paragraph, so the collapse costs one line of layout rather than a jump. */
 
-function SnippetIntro({ snippet, difficulty, typed, open, onToggle }) {
-  const hasIntro = Boolean(snippet.intro);
+function SnippetIntro({ snippet, difficulty, typed, language, analysis, loading, open, onToggle }) {
+  const lines = snippet.code.split('\n').length;
 
   return (
     <div className="border-b border-line bg-gradient-to-b from-subtle/40 to-transparent px-2.5 py-2 sm:px-4">
@@ -416,40 +403,113 @@ function SnippetIntro({ snippet, difficulty, typed, open, onToggle }) {
           <span className="font-mono text-xs text-ink-3 tnum">
             {typed} / {snippet.code.length}
           </span>
-          {hasIntro ? (
-            <button
-              type="button"
-              onClick={onToggle}
-              aria-expanded={open}
-              title={open ? 'Hide the description' : 'Show the description'}
-              className="flex items-center gap-0.5 rounded-xs px-1 py-0.5 text-2xs font-extrabold uppercase tracking-[0.07em] text-ink-3 transition-colors hover:bg-subtle hover:text-ink-2"
-            >
-              {open ? 'Hide' : 'About'}
-              <ChevronDown
-                size={12}
-                strokeWidth={2.6}
-                className={cx('transition-transform duration-200', open && 'rotate-180')}
-                aria-hidden
-              />
-            </button>
-          ) : null}
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-expanded={open}
+            title={open ? 'Hide the briefing' : 'Show the briefing'}
+            className="flex items-center gap-0.5 rounded-xs px-1 py-0.5 text-2xs font-extrabold uppercase tracking-[0.07em] text-ink-3 transition-colors hover:bg-subtle hover:text-ink-2"
+          >
+            {open ? 'Hide' : 'About'}
+            <ChevronDown
+              size={12}
+              strokeWidth={2.6}
+              className={cx('transition-transform duration-200', open && 'rotate-180')}
+              aria-hidden
+            />
+          </button>
         </div>
       </div>
 
       <AnimatePresence initial={false}>
-        {hasIntro && open ? (
-          <motion.p
+        {open ? (
+          <motion.div
             key="intro"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="max-w-[70ch] overflow-hidden text-sm leading-relaxed text-ink-2"
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="overflow-hidden"
           >
-            <span className="mt-1 block">{snippet.intro}</span>
-          </motion.p>
+            <div className="mt-1.5 grid gap-2 lg:grid-cols-[1fr_auto]">
+              <div className="min-w-0 max-w-[80ch]">
+                {/* The bundled one-liner is instant and always right; the model's
+                    reading replaces it when it lands. Showing the short one
+                    first is what keeps this area from opening as a skeleton. */}
+                <Markdown
+                  text={analysis?.intro ?? snippet.intro ?? analysis?.summary ?? ''}
+                  language={language}
+                  compact
+                  className="text-sm"
+                />
+                {loading && !analysis ? (
+                  <div className="mt-1 space-y-1">
+                    <Skeleton className="h-1.5 w-[72%]" />
+                    <Skeleton className="h-1.5 w-[54%]" />
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="flex shrink-0 gap-1 lg:flex-col">
+                <Stat label="Lines" value={lines} />
+                <Stat label="Chars" value={snippet.code.length} />
+                <Stat label="Time" value={analysis?.timeComplexity?.value ?? '—'} />
+              </div>
+            </div>
+
+            <Examples items={analysis?.examples} language={language} />
+          </motion.div>
         ) : null}
       </AnimatePresence>
+    </div>
+  );
+}
+
+function Stat({ label, value }) {
+  // Complexity comes back as free text and can be far longer than "O(n)" —
+  // "O(retries * T)" overflowed a fixed box. Shrink past a threshold and clip
+  // with the full value on hover, rather than letting it break the row.
+  const long = String(value).length > 7;
+
+  return (
+    <div className="min-w-0 flex-1 rounded-md border border-line bg-surface/60 px-1.5 py-1 text-center lg:w-[104px] lg:flex-none">
+      <p
+        title={String(value)}
+        className={cx('truncate font-mono font-bold leading-none tnum', long ? 'text-2xs' : 'text-base')}
+      >
+        {value}
+      </p>
+      <p className="mt-0.5 text-2xs font-bold uppercase tracking-[0.07em] text-ink-3">{label}</p>
+    </div>
+  );
+}
+
+/** Worked cases. Absent offline, because the only honest way to know what a
+ *  snippet returns is to run it — see the note in `localAnalysis`. */
+function Examples({ items, language }) {
+  if (!items?.length) return null;
+
+  return (
+    <div className="mt-2">
+      <p className="text-2xs font-extrabold uppercase tracking-[0.09em] text-ink-3">Worked examples</p>
+      <div className="mt-1 grid gap-1 md:grid-cols-2 xl:grid-cols-3">
+        {items.slice(0, 3).map((ex, i) => (
+          <div key={i} className="rounded-md border border-line bg-surface/60 p-1.5">
+            <p className="text-xs font-extrabold">{ex.title}</p>
+            <div className="mt-1 space-y-0.5 font-mono text-2xs leading-relaxed">
+              <p className="truncate text-ink-2" title={ex.input}>
+                <span className="text-ink-3">in </span>
+                {ex.input}
+              </p>
+              <p className="truncate text-brand" title={ex.output}>
+                <span className="text-ink-3">out </span>
+                {ex.output}
+              </p>
+            </div>
+            {ex.note ? <p className="mt-1 text-2xs leading-relaxed text-ink-3">{ex.note}</p> : null}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
