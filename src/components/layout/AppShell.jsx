@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Braces, ChevronRight, Command, Flame, GraduationCap, Home, Info, Keyboard,
+  BadgeInfo, Braces, ChevronRight, Command, Flame, GraduationCap, Home, Keyboard,
   LineChart, Trophy,
 } from 'lucide-react';
 import { cx, initials } from '../../lib/format.js';
@@ -12,7 +12,7 @@ import { useReducedMotionSafe } from '../../lib/motion.js';
 import Logo from '../brand/Logo.jsx';
 import ThemeToggle from './ThemeToggle.jsx';
 import CommandPalette from './CommandPalette.jsx';
-import MadeWithLove from './MadeWithLove.jsx';
+import ChatFab from './ChatFab.jsx';
 
 /* Grouped like the reference: what you do, then what you've done. */
 export const NAV_GROUPS = [
@@ -30,7 +30,10 @@ export const NAV_GROUPS = [
     items: [
       { to: '/dashboard', label: 'Progress', icon: LineChart },
       { to: '/achievements', label: 'Rewards', icon: Trophy },
-      { to: '/about', label: 'About', icon: Info },
+      // BadgeInfo rather than Info: the bare outline circle read as a passive
+      // status glyph next to solid-weight neighbours, so it looked like a
+      // label rather than a destination.
+      { to: '/about', label: 'About', icon: BadgeInfo },
     ],
   },
 ];
@@ -252,15 +255,21 @@ export default function AppShell({ children }) {
       </aside>
 
       {/* ── Floating top bar — full width, above the rail ────────────── */}
-      <header className="glass glow-panel sticky top-2 z-40 mx-2 mt-2 flex h-[60px] items-center gap-1.5 rounded-xl border border-line px-2 shadow-md">
+      {/* `overflow-hidden` is what keeps the tagline's entrance inside the bar
+          rather than bleeding above or below it. */}
+      <header className="glass glow-panel sticky top-2 z-40 mx-2 mt-2 flex h-[60px] items-center gap-1.5 overflow-hidden rounded-xl border border-line px-2 shadow-md">
+        <Tagline />
         {/* The mark comes from Logo.jsx, which owns the one shape the favicon,
             app icons and boot screen all derive from. This used to be a
             hardcoded <span>k</span>, so editing Logo.jsx changed nothing on
             screen — the single reason the header still looked "old" no matter
             what was committed. */}
-        <NavLink to="/" className="group flex shrink-0 items-center gap-1 text-xl font-extrabold tracking-[-0.04em]">
+        <NavLink
+          to="/"
+          className="group relative z-10 flex shrink-0 items-center gap-1 text-xl font-extrabold tracking-[-0.04em]"
+        >
           <Logo size={32} className="shrink-0 drop-shadow-sm transition-transform duration-300 group-hover:rotate-[-16deg]" />
-          <Wordmark />
+          <span className="whitespace-nowrap">KeyStroke</span>
         </NavLink>
 
         <div className="ml-auto flex items-center gap-1">
@@ -340,38 +349,55 @@ export default function AppShell({ children }) {
       <div className="h-9 lg:hidden" aria-hidden />
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
-      <MadeWithLove />
+      <ChatFab />
     </div>
   );
 }
 
+/** How long the tagline holds in the bar before retiring, in ms. */
+const TAGLINE_MS = 5000;
+
 /**
- * The wordmark, with the tagline fading in beneath it on load.
+ * The tagline, centred in the top bar on load and gone five seconds later.
  *
- * The tagline is `aria-hidden` and the accessible name lives on the link's
- * label instead: it is a flourish, and having a screen reader announce
- * "KeyStroke type faster, code sharper" on every route change would be noise.
+ * Absolutely positioned and `inset-0` inside the bar so it is centred against
+ * the bar itself rather than against whatever happens to sit between the
+ * wordmark and the controls — those change width per route, and a flex-centred
+ * element would drift with them. `overflow-hidden` on the header keeps the
+ * entrance from painting outside the bar.
  *
- * Reserved height, not `height: auto` — animating the tagline's box would
- * nudge the whole header down on every load.
+ * `pointer-events-none` because it sits over the header: it must never
+ * intercept a click aimed at the wordmark or the controls beneath it. It is
+ * also `aria-hidden` — a decorative flourish that a screen reader would
+ * otherwise announce on every load.
  */
-function Wordmark() {
+function Tagline() {
   const reduce = useReducedMotionSafe();
+  const [show, setShow] = useState(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => setShow(false), TAGLINE_MS);
+    return () => clearTimeout(t);
+  }, []);
 
   return (
-    <span className="flex flex-col justify-center leading-none">
-      <span className="whitespace-nowrap">KeyStroke</span>
-      <span className="h-[11px] overflow-hidden" aria-hidden>
-        <motion.span
-          initial={reduce ? false : { opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: reduce ? 0 : 0.35, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          className="hidden whitespace-nowrap text-[10px] font-bold tracking-[0.02em] text-ink-3 sm:block"
+    <AnimatePresence>
+      {show ? (
+        <motion.div
+          key="tagline"
+          aria-hidden
+          initial={reduce ? { opacity: 0 } : { opacity: 0, y: 10, filter: 'blur(4px)' }}
+          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+          exit={reduce ? { opacity: 0 } : { opacity: 0, y: -8, filter: 'blur(3px)' }}
+          transition={{ duration: reduce ? 0.2 : 0.55, ease: [0.16, 1, 0.3, 1] }}
+          className="pointer-events-none absolute inset-0 hidden items-center justify-center sm:flex"
         >
-          type faster, code sharper
-        </motion.span>
-      </span>
-    </span>
+          <span className="whitespace-nowrap text-sm font-bold tracking-[0.01em] text-ink-3">
+            type faster, <span className="text-brand">code sharper</span>
+          </span>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
   );
 }
 

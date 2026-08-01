@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Clock, Eye, EyeOff, Hash, Keyboard as KeyboardIcon, KeyboardOff, Leaf, Maximize2,
-  Minimize2, PenLine, Quote, RotateCcw, Settings2, Volume2, VolumeX,
+  Minimize2, PenLine, Quote, RotateCcw, Settings2, SkipForward, Sparkles, Volume2, VolumeX,
 } from 'lucide-react';
 import Button, { IconButton } from '../../components/ui/Button.jsx';
 import Segmented from '../../components/ui/Segmented.jsx';
@@ -18,7 +18,7 @@ import MissionStrip from '../../components/gamify/MissionStrip.jsx';
 import { HAND_GUIDE_LIMIT, useStore, useStats } from '../../lib/store.jsx';
 import { useToast } from '../../components/ui/Toast.jsx';
 import { DRILLS, randomQuote, randomWords } from '../../lib/content.js';
-import { generatePassage } from '../../lib/ai.js';
+import { aiConfigured, generatePassage } from '../../lib/ai.js';
 import { cx, mmss, relativeTime } from '../../lib/format.js';
 
 const MODES = [
@@ -287,6 +287,10 @@ export default function Practice() {
       onRetry={retry}
       focus={focus}
       onToggleFocus={toggleFocus}
+      onNext={next}
+      onRegenerate={next}
+      aiLoading={aiLoading}
+      aiRegenerable={settings.aiText && mode !== 'custom' && mode !== 'drill'}
     />
   );
 
@@ -550,6 +554,7 @@ export default function Practice() {
 function Controls({
   mode, setMode, difficulty, setDifficulty, duration, setDuration, wordCount, setWordCount,
   drillId, setDrillId, settings, setSetting, onCustom, onSettings, onRetry, focus, onToggleFocus,
+  onNext, onRegenerate, aiLoading, aiRegenerable,
 }) {
   return (
     <div className="flex flex-wrap items-center gap-1">
@@ -599,6 +604,31 @@ function Controls({
       ) : null}
 
       <div className="ml-auto flex items-center gap-0.5">
+        {/* Mirrors the code-typing toolbar: same two actions, same order, same
+            one-word labels. Regenerate is not offered for Custom or Drill —
+            one is your own text and the other is a fixed targeted sequence, so
+            there is nothing for the model to write. */}
+        {aiRegenerable ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            icon={Sparkles}
+            onClick={onRegenerate}
+            disabled={aiLoading || !aiConfigured()}
+            title={
+              aiConfigured()
+                ? 'Write a fresh passage with AI'
+                : 'Set a provider key in .env.local to enable'
+            }
+            className={cx('text-brand', aiLoading && 'animate-pulse')}
+          >
+            {aiLoading ? 'Writing' : 'AI'}
+          </Button>
+        ) : null}
+        <Button size="sm" variant="ghost" icon={SkipForward} onClick={onNext} title="New text  (⇧ + Tab)">
+          Next
+        </Button>
+        <span className="mx-0.5 h-2 w-px bg-line" aria-hidden />
         <IconButton
           size="sm"
           label={settings.showKeyboard ? 'Hide keyboard layout' : 'Show keyboard layout'}

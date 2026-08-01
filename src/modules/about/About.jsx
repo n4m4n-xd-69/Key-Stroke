@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import Button from '../../components/ui/Button.jsx';
 import Segmented from '../../components/ui/Segmented.jsx';
-import { Card, Chip, Skeleton } from '../../components/ui/Primitives.jsx';
+import { Chip, Skeleton } from '../../components/ui/Primitives.jsx';
 import Markdown from '../../components/ui/Markdown.jsx';
 import Logo from '../../components/brand/Logo.jsx';
 import { Reveal, Stagger, StaggerItem } from '../../components/ui/Motion.jsx';
@@ -71,8 +71,8 @@ function AboutTab() {
   return (
     <div className="space-y-2.5">
       <Reveal>
-        <Card className="overflow-hidden">
-          <div className="flex flex-col items-start gap-2 bg-gradient-to-br from-brand-wash/60 to-transparent p-3 sm:flex-row sm:items-center sm:p-4">
+        <div className="liquid-glass overflow-hidden rounded-lg border border-line">
+          <div className="flex flex-col items-start gap-2 p-3 sm:flex-row sm:items-center sm:p-4">
             <Logo size={64} className="shrink-0 drop-shadow-md" />
             <div className="min-w-0">
               <h2 className="text-2xl font-extrabold tracking-[-0.02em]">KeyStroke</h2>
@@ -86,13 +86,13 @@ function AboutTab() {
 
           <Stagger className="grid gap-px border-t border-line bg-line sm:grid-cols-4">
             {facts.map((f) => (
-              <StaggerItem key={f.label} className="bg-surface px-2 py-2 text-center">
+              <StaggerItem key={f.label} className="bg-surface/60 px-2 py-2 text-center backdrop-blur-sm">
                 <p className="font-mono text-2xl font-medium tnum">{f.value}</p>
                 <p className="mt-0.5 text-2xs font-extrabold uppercase tracking-[0.08em] text-ink-3">{f.label}</p>
               </StaggerItem>
             ))}
           </Stagger>
-        </Card>
+        </div>
       </Reveal>
 
       <Stagger className="grid gap-2 md:grid-cols-3">
@@ -114,19 +114,19 @@ function AboutTab() {
           },
         ].map((c) => (
           <StaggerItem key={c.title}>
-            <Card className="h-full p-2.5">
+            <div className="liquid-glass h-full rounded-lg border border-line p-2.5">
               <span className="grid h-[30px] w-[30px] place-items-center rounded-[10px] bg-brand-wash text-brand">
                 <c.icon size={16} strokeWidth={2.2} aria-hidden />
               </span>
               <h3 className="mt-1.5 text-base font-extrabold">{c.title}</h3>
               <p className="mt-0.5 text-sm leading-relaxed text-ink-2">{c.body}</p>
-            </Card>
+            </div>
           </StaggerItem>
         ))}
       </Stagger>
 
       <Reveal delay={0.05}>
-        <Card className="flex flex-wrap items-center gap-2 p-2.5">
+        <div className="liquid-glass flex flex-wrap items-center gap-2 rounded-lg border border-line p-2.5">
           <div className="min-w-0 flex-1">
             <p className="text-sm font-extrabold">Everything works offline</p>
             <p className="text-xs leading-relaxed text-ink-3">
@@ -136,7 +136,7 @@ function AboutTab() {
           <Button as={Link} to="/practice" variant="primary" iconRight={ArrowRight}>
             Start typing
           </Button>
-        </Card>
+        </div>
       </Reveal>
     </div>
   );
@@ -192,7 +192,7 @@ function GuideTab() {
     <Stagger className="grid gap-2 lg:grid-cols-2">
       {GUIDE.map((g) => (
         <StaggerItem key={g.title}>
-          <Card className="h-full p-2.5">
+          <div className="liquid-glass h-full rounded-lg border border-line p-2.5">
             <div className="flex items-center gap-1">
               <span className="grid h-[28px] w-[28px] place-items-center rounded-[9px] bg-brand-wash text-brand">
                 <g.icon size={15} strokeWidth={2.2} aria-hidden />
@@ -209,7 +209,7 @@ function GuideTab() {
                 </li>
               ))}
             </ol>
-          </Card>
+          </div>
         </StaggerItem>
       ))}
     </Stagger>
@@ -262,7 +262,7 @@ function HelpTab() {
   };
 
   return (
-    <Card className="flex h-[calc(100dvh-260px)] min-h-[380px] flex-col overflow-hidden">
+    <div className="liquid-glass flex h-[calc(100dvh-260px)] min-h-[380px] flex-col overflow-hidden rounded-lg border border-line">
       <header className="flex shrink-0 items-center gap-1 border-b border-line px-2 py-1.5">
         <span className="grid h-[26px] w-[26px] place-items-center rounded-[8px] bg-brand-wash text-brand">
           <LifeBuoy size={14} strokeWidth={2.4} aria-hidden />
@@ -341,7 +341,7 @@ function HelpTab() {
         />
         <Button type="submit" size="sm" variant="brand" icon={Send} disabled={!ready || !draft.trim()} aria-label="Send" />
       </form>
-    </Card>
+    </div>
   );
 }
 
@@ -360,13 +360,11 @@ function FollowTab() {
       <Stagger className="grid gap-2 sm:grid-cols-2">
         {LINKS.map((l) => (
           <StaggerItem key={l.label}>
-            <Card
-              as="a"
-              interactive
+            <a
               href={l.href}
               target="_blank"
               rel="noreferrer noopener"
-              className="flex h-full items-start gap-1.5 p-2.5"
+              className="liquid-glass flex h-full items-start gap-1.5 rounded-lg border border-line p-2.5 transition-transform duration-200 hover:-translate-y-px hover:border-line-strong"
             >
               <span className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[11px] bg-subtle text-ink-2">
                 <l.icon size={17} strokeWidth={2.2} aria-hidden />
@@ -376,26 +374,39 @@ function FollowTab() {
                 <p className="truncate font-mono text-2xs text-brand">{l.handle}</p>
                 <p className="mt-0.5 text-xs leading-relaxed text-ink-3">{l.blurb}</p>
               </div>
-            </Card>
+            </a>
           </StaggerItem>
         ))}
       </Stagger>
 
       <Reveal delay={0.05}>
-        <Card className="p-3 text-center">
+        <div className="liquid-glass rounded-lg border border-line p-3 text-center">
           <span className="mx-auto grid h-[38px] w-[38px] place-items-center rounded-full bg-brand-wash">
             <Sparkles size={18} className="text-brand" aria-hidden />
           </span>
-          <p className="mt-1.5 text-base font-extrabold">Built by one person, in the open</p>
+          <p className="mt-1.5 text-base font-extrabold">Tell us what&apos;s missing</p>
           <p className="mx-auto mt-0.5 max-w-[52ch] text-sm leading-relaxed text-ink-2">
-            KeyStroke is a solo project. If something feels wrong, or you want a language or a lesson
-            that isn&apos;t here yet, open an issue — it genuinely gets read.
+            A language you want, a lesson that doesn&apos;t exist yet, a drill that would help, or
+            something that&apos;s simply broken — open an issue. It genuinely gets read, and most of
+            what&apos;s here started as someone asking for it.
           </p>
-          <p className={cx('mt-2 inline-flex items-center gap-0.5 text-2xs font-bold text-ink-3')}>
+          <Button
+            as="a"
+            href="https://github.com/n4m4n-xd-69/Key-Stroke/issues/new"
+            target="_blank"
+            rel="noreferrer noopener"
+            variant="primary"
+            size="sm"
+            iconRight={ArrowRight}
+            className="mt-2"
+          >
+            Open an issue
+          </Button>
+          <p className={cx('mt-2 flex items-center justify-center gap-0.5 text-2xs font-bold text-ink-3')}>
             Made with Love
             <Heart size={11} strokeWidth={0} className="fill-[#ff4d5e]" aria-hidden />
           </p>
-        </Card>
+        </div>
       </Reveal>
     </div>
   );

@@ -183,6 +183,48 @@
   }
 
   /**
+   * Liquid glass.
+   *
+   * `.glass` is a flat translucent pane. This adds the two things that make
+   * glass read as a lens rather than a tint: a specular highlight raking across
+   * the top-left, and a soft inner shadow at the bottom so the pane has
+   * thickness. Both live on a pseudo-element behind the content, so nothing
+   * inside loses contrast against them.
+   *
+   * `isolation: isolate` keeps ::before from painting over descendants, and the
+   * highlight is pointer-events-none so it can never eat a click.
+   */
+  .liquid-glass {
+    @apply glass;
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+  }
+
+  .liquid-glass::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      linear-gradient(135deg, rgb(var(--glass-edge) / 0.16) 0%, transparent 34%),
+      radial-gradient(90% 60% at 12% 0%, rgb(var(--brand-solid) / 0.10), transparent 62%),
+      radial-gradient(80% 70% at 100% 100%, rgb(107 184 214 / 0.09), transparent 66%);
+  }
+
+  .liquid-glass::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow: inset 0 -20px 30px -24px rgb(var(--shadow) / 0.5);
+  }
+
+  /**
    * Soft brand glow bled into the chrome. Two very diffuse radials sitting
    * behind the panel's own background, so the surface picks up a faint tint at
    * its corners without any element on top of it losing contrast.
