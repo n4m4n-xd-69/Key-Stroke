@@ -1,0 +1,16 @@
+{
+  "name": "Keystroke — type faster, code sharper",
+  "short_name": "Keystroke",
+  "description": "Practise typing, drill real code, and learn to program. Track WPM, accuracy and consistency with a streak that keeps you honest.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6f7f3",
+  "theme_color": "#f6f7f3",
+  "icons": [
+    { "src": "/favicon.svg", "type": "image/svg+xml", "sizes": "any" },
+    { "src": "/icon-192.png", "type": "image/png", "sizes": "192x192", "purpose": "any" },
+    { "src": "/icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "type": "image/png", "sizes": "512x512", "purpose": "maskable" }
+  ]
+}

@@ -1,0 +1,151 @@
+import { createClient } from '@supabase/supabase-js';
+import { SUPABASE, SUPABASE_ENABLED } from './config.js';
+
+/**
+ * Supabase client, or null.
+ *
+ * Null is the normal case until keys are configured, and every consumer must
+ * handle it. That is what keeps PRD 04's G3 honest: signed-out, offline, and
+ * unconfigured all behave identically to the app as it exists today, because
+ * nothing here is on the critical path for anything.
+ *
+ * The anon key is public by design — it is inlined into the bundle. Security
+ * comes from row-level security in supabase/migrations/0001_init.sql, not from
+ * the key being secret.
+ */
+export const supabase = SUPABASE_ENABLED
+  ? createClient(SUPABASE.url, SUPABASE.anonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        // Needed for the Google OAuth redirect to complete on return.
+        detectSessionInUrl: true,
+      },
+    })
+  : null;
+
+export const cloudEnabled = () => Boolean(supabase);
+
+/**
+ * Mirrors the signed-in user id outside React, updated by the same
+ * `onAuthStateChange` subscription every consumer already relies on. This is
+ * what lets `ai-runner.js` — a plain fetch/hedging module with no React or
+ * store dependency of its own — attribute a usage row to a user without an
+ * extra network round-trip per AI call.
+ */
+let cachedUserId = null;
+if (supabase) {
+  supabase.auth.getUser().then(({ data }) => {
+    cachedUserId = data?.user?.id ?? null;
+  });
+  supabase.auth.onAuthStateChange((_event, session) => {
+    cachedUserId = session?.user?.id ?? null;
+  });
+}
+
+export function currentUserId() {
+  return cachedUserId;
+}
+
+/* ── admin telemetry (PRD 05) ────────────────────────────────────────────
+   Both are best-effort and silently swallow their own failures — a logging
+   write must never be the reason a sign-in or an AI reply fails. Both also
+   only fire for signed-in users: anonymous, local-only usage stays local,
+   matching the app's local-first default. */
+
+export async function logAuthEvent(userId, event, provider) {
+  if (!supabase) return;
+  try {
+    await supabase.from('auth_events').insert({ user_id: userId ?? null, event, provider: provider ?? null });
+  } catch {
+    /* advisory only */
+  }
+}
+
+export async function logAiUsage({ surface, provider, model, promptTokens, outputTokens, latencyMs, ok, reason }) {
+  if (!supabase || !cachedUserId) return;
+  try {
+    await supabase.from('ai_usage').insert({
+      user_id: cachedUserId,
+      surface,
+      provider: provider ?? 'unknown',
+      model: model ?? 'unknown',
+      prompt_tokens: promptTokens ?? null,
+      output_tokens: outputTokens ?? null,
+      latency_ms: latencyMs ?? null,
+      ok: ok !== false,
+      reason: reason ?? null,
+    });
+  } catch {
+    /* advisory only */
+  }
+}
+
+/* ── auth ─────────────────────────────────────────────────────────────── */
+
+export async function signUpWithEmail(email, password, displayName) {
+  if (!supabase) throw new Error('Cloud sync is not configured.');
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { data: { full_name: displayName ?? '' } },
+  });
+  if (error) throw error;
+  if (data.user) logAuthEvent(data.user.id, 'signup', 'email');
+  return data.user;
+}
+
+export async function signInWithEmail(email, password) {
+  if (!supabase) throw new Error('Cloud sync is not configured.');
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) {
+    logAuthEvent(null, 'failed', 'email');
+    throw error;
+  }
+  logAuthEvent(data.user.id, 'login', 'email');
+  return data.user;
+}
+
+export async function signInWithGoogle() {
+  if (!supabase) throw new Error('Cloud sync is not configured.');
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin },
+  });
+  if (error) throw error;
+  // No user yet — this redirects away. The eventual SIGNED_IN is logged from
+  // the onAuthChange listener in auth.jsx, the only place that can see it.
+}
+
+export async function sendPasswordReset(email) {
+  if (!supabase) throw new Error('Cloud sync is not configured.');
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/`,
+  });
+  if (error) throw error;
+}
+
+export async function signOut() {
+  if (!supabase) return;
+  const { data } = await supabase.auth.getUser();
+  if (data?.user) logAuthEvent(data.user.id, 'logout', null);
+  await supabase.auth.signOut();
+}
+
+export async function getUser() {
+  if (!supabase) return null;
+  const { data } = await supabase.auth.getUser();
+  return data?.user ?? null;
+}
+
+/** Returns an unsubscribe function, or a no-op when unconfigured. Passes the
+ * raw Supabase event name through so a caller can tell a fresh sign-in
+ * (`SIGNED_IN`) apart from the initial session restore (`INITIAL_SESSION`)
+ * or a silent token refresh (`TOKEN_REFRESHED`). */
+export function onAuthChange(callback) {
+  if (!supabase) return () => {};
+  const { data } = supabase.auth.onAuthStateChange((event, session) => {
+    callback(session?.user ?? null, event);
+  });
+  return () => data.subscription.unsubscribe();
+}

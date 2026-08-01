@@ -1,0 +1,54 @@
+import { Suspense, lazy } from 'react';
+import { Navigate, Route, Routes } from 'react-router-dom';
+import AppShell from './components/layout/AppShell.jsx';
+import { Card, Skeleton } from './components/ui/Primitives.jsx';
+
+/* Route-level code splitting: the charts and Prism grammars only load when the
+   surface that needs them is opened. */
+const Landing = lazy(() => import('./modules/landing/Landing.jsx'));
+const Practice = lazy(() => import('./modules/practice/Practice.jsx'));
+const CodeTyping = lazy(() => import('./modules/code/CodeTyping.jsx'));
+const Learn = lazy(() => import('./modules/learn/Learn.jsx'));
+const LessonView = lazy(() => import('./modules/learn/LessonView.jsx'));
+const Dashboard = lazy(() => import('./modules/dashboard/Dashboard.jsx'));
+const Achievements = lazy(() => import('./modules/achievements/Achievements.jsx'));
+
+export default function App() {
+  return (
+    <AppShell>
+      <Suspense fallback={<RouteSkeleton />}>
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/practice" element={<Practice />} />
+          <Route path="/code" element={<CodeTyping />} />
+          <Route path="/learn" element={<Learn />} />
+          <Route path="/learn/:langId" element={<Learn />} />
+          <Route path="/learn/:langId/:conceptId" element={<LessonView />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/achievements" element={<Achievements />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
+    </AppShell>
+  );
+}
+
+function RouteSkeleton() {
+  return (
+    <div className="space-y-3" aria-busy="true" aria-label="Loading">
+      <Skeleton className="h-10 w-full" rounded="rounded-xl" />
+      <div className="grid gap-2 md:grid-cols-2">
+        <Skeleton className="h-8" rounded="rounded-lg" />
+        <Skeleton className="h-8" rounded="rounded-lg" />
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        {[0, 1, 2, 3].map((i) => (
+          <Card key={i} className="p-2">
+            <Skeleton className="h-1 w-[50%]" />
+            <Skeleton className="mt-1.5 h-3 w-[70%]" />
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}

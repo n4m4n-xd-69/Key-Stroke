@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content="Keystroke — practise typing, drill real code, and learn to program. Track WPM, accuracy and consistency with a streak that keeps you honest." />
+    <meta name="theme-color" content="#f6f7f3" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b0d0a" media="(prefers-color-scheme: dark)" />
+    <title>Keystroke — type faster, code sharper</title>
+
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='9' fill='%23a3e635'/><text x='16' y='23' font-size='19' font-family='monospace' font-weight='700' text-anchor='middle' fill='%231a2e05'>k</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <script>
+      // Resolve the theme before first paint so there is never a flash of the wrong mode.
+      (function () {
+        try {
+          var saved = localStorage.getItem('keystroke.theme');
+          var mode =
+            saved && saved !== 'system'
+              ? saved
+              : window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light';
+          document.documentElement.dataset.theme = mode;
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
