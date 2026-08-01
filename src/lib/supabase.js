@@ -83,6 +83,57 @@ export async function logAiUsage({ surface, provider, model, promptTokens, outpu
 
 /* ── auth ─────────────────────────────────────────────────────────────── */
 
+/**
+ * A guest account, created from nothing but a name.
+ *
+ * The point is that progress reaches the database without demanding an email
+ * first: someone who types a name in onboarding gets a real `auth.users` row,
+ * so every RLS policy keyed on `auth.uid()` works unchanged and no table needs
+ * a nullable-owner special case.
+ *
+ * Returns null rather than throwing when anonymous sign-in is disabled in the
+ * project — the app is local-first, and a guest who cannot be created should
+ * simply keep working offline rather than see an error about a setting they
+ * do not control.
+ */
+export async function signInAnonymously(displayName) {
+  if (!supabase) return null;
+  const { data, error } = await supabase.auth.signInAnonymously({
+    options: { data: { full_name: displayName ?? '' } },
+  });
+  if (error) {
+    console.warn('[auth] anonymous sign-in unavailable:', error.message);
+    return null;
+  }
+  if (data.user) logAuthEvent(data.user.id, 'signup', 'anonymous');
+  return data.user;
+}
+
+/** True for a guest account — no identity has been attached to it yet. */
+export function isGuest(user) {
+  return Boolean(user) && (user.is_anonymous === true || (!user.email && !user.phone));
+}
+
+/**
+ * Attaches a real identity to the guest account already in hand.
+ *
+ * `updateUser` keeps the same user id, which is the whole point: every session,
+ * key stat and achievement already written under the guest id stays owned by
+ * the same row, so signing up converts an account rather than starting a
+ * second one and stranding the first.
+ */
+export async function upgradeGuestWithEmail(email, password, displayName) {
+  if (!supabase) throw new Error('Cloud sync is not configured.');
+  const { data, error } = await supabase.auth.updateUser({
+    email,
+    password,
+    ...(displayName ? { data: { full_name: displayName } } : {}),
+  });
+  if (error) throw error;
+  logAuthEvent(data.user?.id, 'signup', 'email-upgrade');
+  return data.user;
+}
+
 export async function signUpWithEmail(email, password, displayName) {
   if (!supabase) throw new Error('Cloud sync is not configured.');
   const { data, error } = await supabase.auth.signUp({

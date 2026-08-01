@@ -145,7 +145,7 @@ Nothing syncs today. `useCloudSync` is never called, `AuthProvider` is never
 mounted, `supabase.js` is never imported — despite your keys being set and the
 migrations being written.
 
-### 3.1 Repair `sync.js` before wiring it `[ ]` S
+### 3.1 Repair `sync.js` before wiring it `[x]` S
 Two defects that will hard-fail the build/runtime the moment it is imported:
 
 - [ ] `sync.js:26` imports `bumpDaily` from `gamification.js` — **it isn't exported
@@ -155,12 +155,12 @@ Two defects that will hard-fail the build/runtime the moment it is imported:
       `problems` key → `unionProblems(undefined, …)` throws. Add `problems: {}` to
       `EMPTY`.
 
-### 3.2 Mount auth `[ ]` S
+### 3.2 Mount auth `[x]` S
 - [ ] Wrap `<AuthProvider>` in `main.jsx` (inside `ThemeProvider`, outside `StoreProvider`)
 - [ ] Render `<AuthModal/>` once from `AppShell`
 - [ ] Replace the static avatar `div` in the top bar with `<AccountMenu/>`
 
-### 3.3 Anonymous accounts `[ ]` M
+### 3.3 Anonymous accounts `[x]` M
 "even name is entered, use their data in database without email:pass too"
 
 - [ ] On onboarding name entry, call `supabase.auth.signInAnonymously()`
@@ -170,18 +170,18 @@ Two defects that will hard-fail the build/runtime the moment it is imported:
 - [ ] **Manual step:** enable Anonymous sign-ins in Supabase dashboard →
       Authentication → Providers
 
-### 3.4 Turn sync on `[ ]` M
+### 3.4 Turn sync on `[x]` M
 - [ ] Call `useCloudSync(user, state, dispatch)` from `StoreProvider`
 - [ ] Verify: adopt-on-first-signin, focus pull, 2s debounced push, reconnect push
 - [ ] Confirm no double-count when the same device signs in twice (`keystroke.adopted` gate)
 
-### 3.5 New tables — migration `0003_chat_and_votes.sql` `[ ]` M
-- [ ] `chat_messages` — user_id, thread_id, role, content, reasoning, created_at
-- [ ] `beta_votes` — user_id, feature, vote, created_at, unique(user_id, feature)
-- [ ] `beta_vote_tally` view — aggregate yes/no per feature
-- [ ] RLS: own-rows write, tally readable by all, admin read-all (mirror `0002`)
+### 3.5 New tables — migration `0003_chat_and_votes.sql` `[x]` M
+- [x] `chat_messages` — user_id, thread_id, role, content, reasoning, created_at
+- [x] `beta_votes` — user_id, feature, vote, created_at, unique(user_id, feature)
+- [x] `beta_vote_tally` view — aggregate yes/no per feature
+- [x] RLS: own-rows write, tally readable by all, admin read-all (mirror `0002`)
 
-### 3.6 AI usage telemetry `[ ]` S
+### 3.6 AI usage telemetry `[x]` S
 `logAiUsage` and `currentUserId` exist in `supabase.js` and are called from
 nowhere, so the admin AI-spend tab would always read zero.
 
@@ -189,7 +189,7 @@ nowhere, so the admin AI-spend tab would always read zero.
 - [ ] `streamChat` in `ai.js:129` silently drops the `surface` argument
       `useStreamingChat` passes it — accept and forward it
 
-### 3.7 Admin route `[ ]` S
+### 3.7 Admin route `[x]` S
 - [ ] Add `/admin` to `App.jsx` (6 finished files currently unreachable)
 - [ ] Guard `fetchOverview`/`fetchDaily`/`fetchAuthEvents`/`fetchAiUsage` against a
       null `supabase` — only `fetchMyRole` and `logAdminView` do today
@@ -308,7 +308,7 @@ The 102-module corpus can no longer be regenerated. The script exits 0 silently.
    `VITE_OPENROUTER_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`,
    `VITE_SITE_URL` — the deployed build reads these, not `.env.local`
 3. Vercel → re-link the project (`.vercel/` is gitignored now)
-4. Run migration `0003` against the project
+4. ~~Run migration `0003` against the project~~ ✅ applied 2026-08-02
 5. *(optional, recommended)* rotate the DB password and hcnsec key
 
 ---

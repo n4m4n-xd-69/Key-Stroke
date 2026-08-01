@@ -5,6 +5,8 @@ import Modal from '../../components/ui/Modal.jsx';
 import Button from '../../components/ui/Button.jsx';
 import Segmented from '../../components/ui/Segmented.jsx';
 import { useStore } from '../../lib/store.jsx';
+import { useAuth } from '../../lib/auth.jsx';
+import { signInAnonymously } from '../../lib/supabase.js';
 import { cx } from '../../lib/format.js';
 
 const GOALS = [
@@ -25,13 +27,30 @@ const FOCUS = [
  */
 export default function Onboarding({ open, onClose, onStart }) {
   const { state, updateProfile } = useStore();
+  const { user, cloudEnabled } = useAuth();
   const [step, setStep] = useState(0);
   const [name, setName] = useState(state.profile.name);
   const [goal, setGoal] = useState(state.profile.goalMinutes ?? 15);
   const [focus, setFocus] = useState('speed');
 
   const finish = () => {
-    updateProfile({ name: name.trim(), goalMinutes: goal, onboarded: true });
+    const trimmed = name.trim();
+    updateProfile({ name: trimmed, goalMinutes: goal, onboarded: true });
+
+    /**
+     * A name is enough to get a database row.
+     *
+     * Creating a guest account here is what lets progress sync without asking
+     * for an email first — the id it returns owns every session, key stat and
+     * achievement from this point on, and signing up later converts that same
+     * account rather than starting a second one.
+     *
+     * Deliberately not awaited and deliberately silent on failure: onboarding
+     * must close instantly, and a project without anonymous sign-in enabled
+     * should fall back to local-only rather than block anyone at the door.
+     */
+    if (trimmed && cloudEnabled && !user) signInAnonymously(trimmed);
+
     onClose();
     onStart?.(focus);
   };

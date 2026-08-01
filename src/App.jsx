@@ -13,6 +13,7 @@ const LessonView = lazy(() => import('./modules/learn/LessonView.jsx'));
 const Dashboard = lazy(() => import('./modules/dashboard/Dashboard.jsx'));
 const Achievements = lazy(() => import('./modules/achievements/Achievements.jsx'));
 const About = lazy(() => import('./modules/about/About.jsx'));
+const AdminPanel = lazy(() => import('./modules/admin/AdminPanel.jsx'));
 
 export default function App() {
   return (
@@ -28,6 +29,11 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/achievements" element={<Achievements />} />
           <Route path="/about" element={<About />} />
+          {/* Reached from the account menu rather than the nav: the mobile
+              tab bar shares NAV_GROUPS, and an operator view only one account
+              can open has no business holding a permanent slot there. Access
+              is enforced by is_admin() in the database, not by this route. */}
+          <Route path="/admin" element={<AdminPanel />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

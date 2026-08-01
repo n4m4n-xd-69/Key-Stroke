@@ -1,8 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef } from 'react';
 import {
-  ACHIEVEMENTS, advanceStreak, dayKey, levelFromXP, liveStreak,
+  ACHIEVEMENTS, advanceStreak, bumpDaily, dayKey, levelFromXP, liveStreak,
   missionsForDay, missionProgress, xpForSession, LESSON_XP, QUIZ_XP,
 } from './gamification.js';
+import { useAuth } from './auth.jsx';
+import { useCloudSync } from './sync.js';
 
 const KEY = 'keystroke.state.v2';
 
@@ -14,6 +16,11 @@ const EMPTY = {
   sessions: [], // newest last, capped
   keyStats: {}, // char -> { total, wrong }
   achievements: {}, // id -> ISO unlock date
+  // problemId -> { status, attempts, solvedAt, lastLanguage }. Nothing writes
+  // this yet, but sync reads and merges it, and `unionProblems` dereferences
+  // `local[id]` — an absent key threw the moment cloud sync touched a fresh
+  // profile. Present and empty is the correct shape.
+  problems: {},
   learn: { completed: [], quizzes: {} },
   daily: {}, // dayKey -> counters used by missions + the heatmap
   settings: {
@@ -50,17 +57,12 @@ function load() {
       profile: { ...EMPTY.profile, ...parsed.profile },
       settings: { ...EMPTY.settings, ...parsed.settings },
       learn: { ...EMPTY.learn, ...parsed.learn },
+      // Saved before `problems` existed, so a spread alone leaves it undefined.
+      problems: parsed.problems ?? EMPTY.problems,
     };
   } catch {
     return EMPTY;
   }
-}
-
-function bumpDaily(daily, key, patch) {
-  const today = daily[key] ?? { sessions: 0, seconds: 0, chars: 0, codeRuns: 0, accurateRuns: 0, lessons: 0, personalBests: 0, xp: 0 };
-  const next = { ...today };
-  for (const [k, v] of Object.entries(patch)) next[k] = (next[k] ?? 0) + v;
-  return { ...daily, [key]: next };
 }
 
 /** Recomputes which achievements are newly unlocked. Never re-locks anything. */
@@ -182,6 +184,17 @@ const StoreContext = createContext(null);
 export function StoreProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, undefined, load);
   const saveTimer = useRef();
+  const { user } = useAuth();
+
+  /**
+   * Cloud sync, as a side channel.
+   *
+   * Local state stays the source of truth and every write still lands in
+   * localStorage first — this only mirrors it. Every function in sync.js
+   * no-ops when Supabase is unconfigured or nobody is signed in, so the
+   * local-only path is byte-for-byte what it was before this line existed.
+   */
+  useCloudSync(user, state, dispatch);
 
   // Debounced persistence — typing generates a lot of state churn.
   useEffect(() => {

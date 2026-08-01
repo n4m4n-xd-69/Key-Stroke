@@ -13,6 +13,8 @@ import Logo from '../brand/Logo.jsx';
 import ThemeToggle from './ThemeToggle.jsx';
 import CommandPalette from './CommandPalette.jsx';
 import ChatFab from './ChatFab.jsx';
+import AccountMenu from '../../modules/auth/AccountMenu.jsx';
+import AuthModal from '../../modules/auth/AuthModal.jsx';
 
 /* Grouped like the reference: what you do, then what you've done. */
 export const NAV_GROUPS = [
@@ -282,12 +284,17 @@ export default function AppShell({ children }) {
             <Command size={13} aria-hidden /> ⌘K
           </button>
           <ThemeToggle />
+          {/* Level and identity are different things, so they stay separate
+              controls: the pill is who you are *in* the app, the menu is which
+              account it syncs to. AccountMenu renders nothing at all when
+              Supabase is unconfigured, so a keyless build shows no cloud UI. */}
           <div className="flex items-center gap-1 rounded-full border border-line py-px pl-px pr-1.5">
             <span className="grid h-[30px] w-[30px] place-items-center rounded-full bg-brand-solid text-2xs font-extrabold text-brand-ink">
               {initials(state.profile.name)}
             </span>
             <span className="hidden text-xs font-bold sm:block">Lv {stats.level.level}</span>
           </div>
+          <AccountMenu />
         </div>
       </header>
 
@@ -350,6 +357,10 @@ export default function AppShell({ children }) {
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <ChatFab />
+      {/* Rendered once here, driven by AuthProvider state — the same split
+          ToastProvider uses, so any surface can call openAuthModal() without
+          owning a modal of its own. */}
+      <AuthModal />
     </div>
   );
 }

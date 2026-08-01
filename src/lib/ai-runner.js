@@ -1,4 +1,5 @@
 import { AI_ENABLED, AI_TIMING, PROVIDERS } from './config.js';
+import { logAiUsage } from './supabase.js';
 
 /**
  * The transport layer: provider selection, hedging, failover and streaming.
@@ -133,7 +134,7 @@ async function callOnce({ provider, model, messages, maxTokens, temperature, sig
     const msg = data?.choices?.[0]?.message;
     const text = msg?.content?.trim();
     if (!text) throw new AIUnavailable(`${provider.id}/${model} returned no content`, 'bad-response');
-    return { text, reasoning: msg?.reasoning_content ?? msg?.reasoning ?? '', provider: provider.id, model };
+    return { text, reasoning: msg?.reasoning_content ?? msg?.reasoning ?? '', provider: provider.id, model, usage: data?.usage };
   }
 
   /* ── SSE ───────────────────────────────────────────────────────────────
@@ -145,6 +146,7 @@ async function callOnce({ provider, model, messages, maxTokens, temperature, sig
   let buffer = '';
   let content = '';
   let reasoning = '';
+  let usage;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -167,6 +169,10 @@ async function callOnce({ provider, model, messages, maxTokens, temperature, sig
         continue; // partial frame; the next read completes it
       }
 
+      // Streams report token counts on a trailing frame, usually the same one
+      // that carries the finish reason and no delta at all.
+      if (chunk?.usage) usage = chunk.usage;
+
       const delta = chunk?.choices?.[0]?.delta;
       if (!delta) continue;
 
@@ -183,7 +189,7 @@ async function callOnce({ provider, model, messages, maxTokens, temperature, sig
   }
 
   if (!content.trim()) throw new AIUnavailable(`${provider.id}/${model} streamed no content`, 'bad-response');
-  return { text: content.trim(), reasoning, provider: provider.id, model };
+  return { text: content.trim(), reasoning, provider: provider.id, model, usage };
 }
 
 /* ── Hedged runner ─────────────────────────────────────────────────────── */
@@ -213,6 +219,7 @@ export async function complete({
   onThinking,
   onToken,
   onAttempt,
+  surface = 'unknown',
 } = {}) {
   if (!aiConfigured()) throw new AIUnavailable('No providers configured', 'no-key');
 
@@ -227,6 +234,26 @@ export async function complete({
   signal?.addEventListener('abort', abortAll, { once: true });
 
   const overall = setTimeout(abortAll, AI_TIMING.totalTimeoutMs);
+
+  /**
+   * One row per settled attempt, for the admin AI-usage view.
+   *
+   * Fire-and-forget by design: `logAiUsage` swallows its own failures and
+   * no-ops for signed-out users and unconfigured deploys, so an analytics
+   * write can never be the reason an answer fails to arrive.
+   */
+  const record = (entry, startedAt, { ok, reason, usage }) => {
+    logAiUsage({
+      surface,
+      provider: entry.provider.id,
+      model: entry.model,
+      promptTokens: usage?.prompt_tokens,
+      outputTokens: usage?.completion_tokens,
+      latencyMs: Date.now() - startedAt,
+      ok,
+      reason,
+    });
+  };
 
   const attempt = async (entry, index) => {
     // Stagger: attempt N starts N × hedgeMs after the first, unless we've won.
@@ -243,6 +270,7 @@ export async function complete({
     controllers.push(controller);
     const timer = setTimeout(() => controller.abort(), perAttemptTimeout);
     onAttempt?.({ provider: entry.provider.id, model: entry.model, index });
+    const startedAt = Date.now();
 
     try {
       const result = await callOnce({
@@ -256,9 +284,15 @@ export async function complete({
         onThinking: (t) => !settled && onThinking?.(t),
         onToken: (t) => !settled && onToken?.(t),
       });
+      record(entry, startedAt, { ok: true, usage: result.usage });
       return result;
     } catch (err) {
       const reason = err?.name === 'AbortError' ? 'timeout' : (err.reason ?? 'network');
+      // A hedge cancelled by a winner is not a failure and would badly skew any
+      // reliability figure read off this table, so it is not recorded at all.
+      if (!(err?.name === 'AbortError' && settled)) {
+        record(entry, startedAt, { ok: false, reason });
+      }
       errors.push(new AIUnavailable(`${entry.provider.id}/${entry.model}: ${err.message}`, reason));
       return null;
     } finally {

@@ -122,7 +122,7 @@ export async function analyseCode(code, language, { signal } = {}) {
               content: `Analyse this ${language} snippet. The "flow" array is a directed graph: give each node an id, and list the ids it leads to in "next". Use "decision" for branches and give each outgoing edge a "branch" label, and put a concrete value at that step in "example". Give 2-3 worked "examples" with real inputs and the outputs they actually produce — a normal case and at least one edge case. Respond in exactly this JSON shape:\n${ANALYSIS_SHAPE}\n\n\`\`\`${language}\n${code}\n\`\`\``,
             },
           ],
-          { maxTokens: 2200, temperature: 0.3, signal },
+          { maxTokens: 2200, temperature: 0.3, signal, surface: 'analyse' },
         );
         return { ...extractJSON(raw), source: 'ai' };
       } catch (err) {
@@ -151,7 +151,7 @@ export async function optimiseCode(code, language, { signal } = {}) {
           content: `Rewrite this ${language} snippet to be clearer and faster where it genuinely helps. If it is already good, say so in the verdict and change only what is worth changing. Respond as {"code": "the rewritten snippet", "changes": ["3-5 bullets naming the change and why it helps"], "verdict": "one or two sentences"}.\n\n\`\`\`${language}\n${code}\n\`\`\``,
         },
       ],
-      { maxTokens: 1800, temperature: 0.2, signal },
+      { maxTokens: 1800, temperature: 0.2, signal, surface: 'optimise' },
     );
     const parsed = extractJSON(raw);
     if (!parsed.code) throw new AIUnavailable('The model returned no rewritten code', 'bad-response');
@@ -169,7 +169,7 @@ export async function optimiseCode(code, language, { signal } = {}) {
  * models only); `onToken` receives the answer. The caller shows a trimmed live
  * preview of the thinking, then swaps to the full answer when it lands.
  */
-export async function streamChat({ messages, onThinking, onToken, signal, maxTokens = 1200 }) {
+export async function streamChat({ messages, onThinking, onToken, signal, maxTokens = 1200, surface }) {
   return complete({
     messages,
     maxTokens,
@@ -179,6 +179,9 @@ export async function streamChat({ messages, onThinking, onToken, signal, maxTok
     onThinking,
     onToken,
     signal,
+    // Was accepted by every caller and then dropped here, so every streamed
+    // reply was attributed to 'unknown' in the usage table.
+    surface,
   });
 }
 
@@ -196,7 +199,7 @@ export async function suggestQuestions(code, language, { signal } = {}) {
               content: `Given this ${language} snippet, write 4 short questions a learner would genuinely ask about it. Each under 60 characters, specific to this code, no generic questions. Respond as {"questions": ["...", "...", "...", "..."]}.\n\n\`\`\`${language}\n${code}\n\`\`\``,
             },
           ],
-          { maxTokens: 400, temperature: 0.7, signal },
+          { maxTokens: 400, temperature: 0.7, signal, surface: 'questions' },
         );
         const parsed = extractJSON(raw);
         return Array.isArray(parsed.questions) && parsed.questions.length ? parsed.questions.slice(0, 4) : localQuestions(code, language);
@@ -226,7 +229,7 @@ export async function generateSnippet(language, difficulty, { signal, avoid = []
         } Respond as {"title": "short title", "topic": "2-3 words", "intro": "one sentence on what it does and why it is worth typing", "code": "the snippet"}.`,
       },
     ],
-    { maxTokens: 900, temperature: 1, signal },
+    { maxTokens: 900, temperature: 1, signal, surface: 'snippet' },
   );
   const parsed = extractJSON(raw);
   if (!parsed.code) throw new AIUnavailable('No code in response', 'bad-response');
@@ -284,7 +287,7 @@ export async function generatePassage({ mode, difficulty, words = 60, avoid = []
     // so the fastest provider failed on *every* passage request and the app
     // silently fell through to the slower backup — which is why practice text
     // so often looked like the bundled banks rather than freshly generated.
-    { maxTokens: 700, temperature: 1, signal },
+    { maxTokens: 700, temperature: 1, signal, surface: 'passage' },
   );
 
   const parsed = extractJSON(raw);
@@ -311,7 +314,7 @@ export async function coachInsight(stats, { signal } = {}) {
               content: `Sessions: ${stats.sessions}. Average ${Math.round(stats.wpm)} WPM, ${Math.round(stats.accuracy)}% accuracy, ${Math.round(stats.consistency)}% consistency. Streak ${stats.streak} days. Weakest keys: ${stats.weakKeys?.join(', ') || 'none recorded'}. Weekly trend: ${stats.trend > 0 ? `up ${stats.trend.toFixed(1)}` : `down ${Math.abs(stats.trend).toFixed(1)}`} WPM. One observation, one thing to work on.`,
             },
           ],
-          { maxTokens: 200, temperature: 0.7, signal },
+          { maxTokens: 200, temperature: 0.7, signal, surface: 'coach' },
         );
         return { text: raw.replace(/^["']|["']$/g, ''), source: 'ai' };
       } catch (err) {
@@ -331,7 +334,7 @@ export async function tutorAnswer(question, context, { signal } = {}) {
       },
       { role: 'user', content: `Lesson: ${context}\n\nQuestion: ${question}` },
     ],
-    { maxTokens: 500, temperature: 0.5, signal },
+    { maxTokens: 500, temperature: 0.5, signal, surface: 'tutor' },
   );
 }
 

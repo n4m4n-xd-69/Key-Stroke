@@ -3,7 +3,10 @@ import Modal from '../../components/ui/Modal.jsx';
 import Button from '../../components/ui/Button.jsx';
 import { useToast } from '../../components/ui/Toast.jsx';
 import { useAuth } from '../../lib/auth.jsx';
-import { sendPasswordReset, signInWithEmail, signInWithGoogle, signUpWithEmail } from '../../lib/supabase.js';
+import {
+  isGuest, sendPasswordReset, signInWithEmail, signInWithGoogle, signUpWithEmail,
+  upgradeGuestWithEmail,
+} from '../../lib/supabase.js';
 
 const TITLES = { 'sign-in': 'Sign in', 'sign-up': 'Create your account', reset: 'Reset your password' };
 const SUBMIT_LABEL = { 'sign-in': 'Sign in', 'sign-up': 'Create account', reset: 'Send reset link' };
@@ -14,7 +17,7 @@ const inputClass =
 /** Email/password + Google, per PRD 04 §Step 5. A modal, not a route, so
  * signing in never loses whatever page the user was on. */
 export default function AuthModal() {
-  const { modalOpen, authView, closeAuthModal } = useAuth();
+  const { modalOpen, authView, closeAuthModal, user } = useAuth();
   const { toast } = useToast();
   const [view, setView] = useState(authView ?? 'sign-in');
   const [name, setName] = useState('');
@@ -41,8 +44,17 @@ export default function AuthModal() {
         toast('Signed in.', { tone: 'success' });
         closeAuthModal();
       } else if (view === 'sign-up') {
-        await signUpWithEmail(email.trim(), password, name.trim());
-        toast('Account created.', { tone: 'success' });
+        // Upgrade in place when a guest account is already holding this
+        // progress. `signUpWithEmail` would mint a *second* user id and strand
+        // everything written under the first — every session, key stat and
+        // achievement is owned by the guest id.
+        if (isGuest(user)) {
+          await upgradeGuestWithEmail(email.trim(), password, name.trim());
+          toast('Progress saved to your account.', { tone: 'success' });
+        } else {
+          await signUpWithEmail(email.trim(), password, name.trim());
+          toast('Account created.', { tone: 'success' });
+        }
         closeAuthModal();
       } else {
         await sendPasswordReset(email.trim());

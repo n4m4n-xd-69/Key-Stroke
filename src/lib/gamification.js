@@ -145,3 +145,28 @@ export function missionProgress(mission, today) {
   const raw = today?.[mission.metric] ?? 0;
   return { value: Math.min(raw, mission.goal), done: raw >= mission.goal };
 }
+
+/* ── Daily counters ────────────────────────────────────────────────────── */
+
+/** The shape every `daily[dayKey]` entry has. Kept beside `MISSION_POOL`
+ *  because the mission metrics above are exactly these keys. */
+export const EMPTY_DAY = {
+  sessions: 0, seconds: 0, chars: 0, codeRuns: 0,
+  accurateRuns: 0, lessons: 0, personalBests: 0, xp: 0,
+};
+
+/**
+ * Adds `patch` into the counters for one day, returning a new `daily` map.
+ *
+ * Lives here rather than in store.jsx because sync.js has to rebuild the same
+ * counters when merging remote sessions, and two implementations of "what a
+ * day's totals mean" would drift. sync.js already imported it from this module;
+ * it was only ever defined in the store, so that import would have failed the
+ * build the moment anything pulled sync.js into the graph.
+ */
+export function bumpDaily(daily, key, patch) {
+  const today = daily[key] ?? EMPTY_DAY;
+  const next = { ...today };
+  for (const [k, v] of Object.entries(patch)) next[k] = (next[k] ?? 0) + v;
+  return { ...daily, [key]: next };
+}

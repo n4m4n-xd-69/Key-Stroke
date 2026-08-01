@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { LogIn, LogOut, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../lib/auth.jsx';
+import { isGuest } from '../../lib/supabase.js';
 import { useToast } from '../../components/ui/Toast.jsx';
 import { cx } from '../../lib/format.js';
 import { fetchMyRole } from '../admin/adminApi.js';
@@ -75,7 +76,8 @@ export default function AccountMenu() {
   }
 
   const displayName = user.user_metadata?.full_name?.trim();
-  const label = displayName || user.email || 'Account';
+  const guest = isGuest(user);
+  const label = displayName || user.email || (guest ? 'Guest' : 'Account');
 
   return (
     <div className="relative shrink-0" ref={ref}>
@@ -97,9 +99,34 @@ export default function AccountMenu() {
           )}
         >
           <div className="border-b border-line px-2 py-1.5">
-            <p className="truncate text-sm font-bold">{displayName || 'Signed in'}</p>
-            <p className="truncate text-xs text-ink-3">{user.email}</p>
+            <p className="truncate text-sm font-bold">{displayName || (guest ? 'Guest' : 'Signed in')}</p>
+            <p className="truncate text-xs text-ink-3">
+              {guest ? 'Progress is syncing to a guest account' : user.email}
+            </p>
           </div>
+
+          {/* A guest account is real and already owns this progress, but it
+              lives and dies with this browser: clear site data, or open the app
+              anywhere else, and there is no way back to it. Saying so is the
+              honest version of "sign up", and the upgrade keeps the same id. */}
+          {guest ? (
+            <button
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                openAuthModal('sign-up');
+              }}
+              className="flex w-full items-start gap-1 border-b border-line px-2 py-1.5 text-left transition-colors hover:bg-subtle"
+            >
+              <ShieldCheck size={14} strokeWidth={2.2} className="mt-px shrink-0 text-brand" aria-hidden />
+              <span className="min-w-0">
+                <span className="block text-sm font-bold text-ink">Save this progress</span>
+                <span className="block text-2xs leading-relaxed text-ink-3">
+                  Add an email so it survives this browser.
+                </span>
+              </span>
+            </button>
+          ) : null}
           {role === 'admin' ? (
             <Link
               role="menuitem"

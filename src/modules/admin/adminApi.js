@@ -16,18 +16,21 @@ export async function fetchMyRole(userId) {
 }
 
 export async function fetchOverview() {
+  if (!supabase) return [];
   const { data, error } = await supabase.rpc('admin_user_overview');
   if (error) throw error;
   return data ?? [];
 }
 
 export async function fetchDaily(days = 90) {
+  if (!supabase) return [];
   const { data, error } = await supabase.from('admin_daily').select('*').limit(days);
   if (error) throw error;
   return data ?? [];
 }
 
 export async function fetchAuthEvents({ limit = 200, userId } = {}) {
+  if (!supabase) return [];
   let q = supabase.from('auth_events').select('*').order('created_at', { ascending: false }).limit(limit);
   if (userId) q = q.eq('user_id', userId);
   const { data, error } = await q;
@@ -36,6 +39,7 @@ export async function fetchAuthEvents({ limit = 200, userId } = {}) {
 }
 
 export async function fetchAiUsage({ limit = 1000, userId } = {}) {
+  if (!supabase) return [];
   let q = supabase.from('ai_usage').select('*').order('created_at', { ascending: false }).limit(limit);
   if (userId) q = q.eq('user_id', userId);
   const { data, error } = await q;
@@ -44,6 +48,7 @@ export async function fetchAiUsage({ limit = 1000, userId } = {}) {
 }
 
 export async function fetchUserDetail(userId) {
+  if (!supabase) return { sessions: [], keyStats: [], learn: [], problems: [] };
   const [sessionsRes, keyStatsRes, learnRes, problemsRes] = await Promise.all([
     supabase.from('sessions').select('*').eq('user_id', userId).order('ts', { ascending: false }).limit(100),
     supabase.from('key_stats').select('*').eq('user_id', userId),
