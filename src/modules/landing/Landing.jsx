@@ -225,7 +225,7 @@ function Hero({ name, stats, onStart, onCode }) {
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
           <span className="inline-flex items-center gap-0.5 rounded-full border border-line bg-surface/80 px-1 py-px text-2xs font-extrabold uppercase tracking-[0.1em] text-brand">
             <Sparkles size={11} aria-hidden />
-            {fresh ? 'Welcome to Keystroke' : longDate()}
+            {fresh ? 'Welcome to KeyStroke' : longDate()}
           </span>
 
           <h1 className="mt-1.5 text-4xl font-extrabold leading-[1.05] tracking-[-0.035em] sm:text-5xl">

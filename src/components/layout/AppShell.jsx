@@ -2,14 +2,17 @@ import { useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  Braces, ChevronRight, Command, Flame, GraduationCap, Home, Keyboard,
+  Braces, ChevronRight, Command, Flame, GraduationCap, Home, Info, Keyboard,
   LineChart, Trophy,
 } from 'lucide-react';
 import { cx, initials } from '../../lib/format.js';
 import { useStats, useStore } from '../../lib/store.jsx';
 import { levelTitle } from '../../lib/gamification.js';
+import { useReducedMotionSafe } from '../../lib/motion.js';
+import Logo from '../brand/Logo.jsx';
 import ThemeToggle from './ThemeToggle.jsx';
 import CommandPalette from './CommandPalette.jsx';
+import MadeWithLove from './MadeWithLove.jsx';
 
 /* Grouped like the reference: what you do, then what you've done. */
 export const NAV_GROUPS = [
@@ -27,6 +30,7 @@ export const NAV_GROUPS = [
     items: [
       { to: '/dashboard', label: 'Progress', icon: LineChart },
       { to: '/achievements', label: 'Rewards', icon: Trophy },
+      { to: '/about', label: 'About', icon: Info },
     ],
   },
 ];
@@ -249,11 +253,14 @@ export default function AppShell({ children }) {
 
       {/* ── Floating top bar — full width, above the rail ────────────── */}
       <header className="glass glow-panel sticky top-2 z-40 mx-2 mt-2 flex h-[60px] items-center gap-1.5 rounded-xl border border-line px-2 shadow-md">
-        <NavLink to="/" className="flex shrink-0 items-center gap-1 text-xl font-extrabold tracking-[-0.04em]">
-          <span className="grid h-[32px] w-[32px] shrink-0 -rotate-6 place-items-center rounded-[10px] bg-brand-solid font-mono text-base text-brand-ink shadow-sm">
-            k
-          </span>
-          <span className="whitespace-nowrap">keystroke</span>
+        {/* The mark comes from Logo.jsx, which owns the one shape the favicon,
+            app icons and boot screen all derive from. This used to be a
+            hardcoded <span>k</span>, so editing Logo.jsx changed nothing on
+            screen — the single reason the header still looked "old" no matter
+            what was committed. */}
+        <NavLink to="/" className="group flex shrink-0 items-center gap-1 text-xl font-extrabold tracking-[-0.04em]">
+          <Logo size={32} className="shrink-0 drop-shadow-sm transition-transform duration-300 group-hover:rotate-[-16deg]" />
+          <Wordmark />
         </NavLink>
 
         <div className="ml-auto flex items-center gap-1">
@@ -333,7 +340,38 @@ export default function AppShell({ children }) {
       <div className="h-9 lg:hidden" aria-hidden />
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <MadeWithLove />
     </div>
+  );
+}
+
+/**
+ * The wordmark, with the tagline fading in beneath it on load.
+ *
+ * The tagline is `aria-hidden` and the accessible name lives on the link's
+ * label instead: it is a flourish, and having a screen reader announce
+ * "KeyStroke type faster, code sharper" on every route change would be noise.
+ *
+ * Reserved height, not `height: auto` — animating the tagline's box would
+ * nudge the whole header down on every load.
+ */
+function Wordmark() {
+  const reduce = useReducedMotionSafe();
+
+  return (
+    <span className="flex flex-col justify-center leading-none">
+      <span className="whitespace-nowrap">KeyStroke</span>
+      <span className="h-[11px] overflow-hidden" aria-hidden>
+        <motion.span
+          initial={reduce ? false : { opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: reduce ? 0 : 0.35, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          className="hidden whitespace-nowrap text-[10px] font-bold tracking-[0.02em] text-ink-3 sm:block"
+        >
+          type faster, code sharper
+        </motion.span>
+      </span>
+    </span>
   );
 }
 

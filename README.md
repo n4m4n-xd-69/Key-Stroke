@@ -1,4 +1,4 @@
-# Keystroke
+# KeyStroke
 
 A typing platform for people who write code: prose and drill practice, syntax-aware
 code typing with an AI analysis panel, and a lesson track that teaches the concepts
@@ -100,7 +100,7 @@ export const OPENROUTER = {
     'google/gemma-4-26b-a4b-it:free',
   ],
   referer: 'http://localhost:5173',
-  title: 'Keystroke',
+  title: 'KeyStroke',
 };
 export const AI_ENABLED = true;
 ```

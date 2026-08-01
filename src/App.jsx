@@ -12,6 +12,7 @@ const Learn = lazy(() => import('./modules/learn/Learn.jsx'));
 const LessonView = lazy(() => import('./modules/learn/LessonView.jsx'));
 const Dashboard = lazy(() => import('./modules/dashboard/Dashboard.jsx'));
 const Achievements = lazy(() => import('./modules/achievements/Achievements.jsx'));
+const About = lazy(() => import('./modules/about/About.jsx'));
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/learn/:langId/:conceptId" element={<LessonView />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/achievements" element={<Achievements />} />
+          <Route path="/about" element={<About />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

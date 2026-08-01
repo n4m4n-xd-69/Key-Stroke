@@ -1,5 +1,5 @@
 /**
- * The Keystroke mark.
+ * The KeyStroke mark.
  *
  * Geometry is a vectorisation of the original raster artwork: a rounded
  * tile carrying the folded "K". Both the tile radius and the glyph were
