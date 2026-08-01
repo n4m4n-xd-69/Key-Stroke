@@ -50,6 +50,10 @@ export default function AISidebar({ code, language, languageName, expanded = fal
       try {
         const data = await analyseCode(code, languageName, { signal: controller.signal });
         if (!controller.signal.aborted) setAnalysis(data);
+      } catch {
+        // `analyseCode` now rethrows aborts so the shared in-flight entry is
+        // dropped rather than reused. An abort means a newer run has taken
+        // over, so there is nothing to show and nothing to report.
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }

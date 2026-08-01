@@ -19,16 +19,43 @@ export function clearAICache() {
   CACHE.clear();
 }
 
+/**
+ * Memoised producer with in-flight de-duplication.
+ *
+ * Two callers asking for the same key share one request — but only while that
+ * request is healthy. If the shared attempt rejects, the joining caller must
+ * NOT inherit the failure: the usual cause is that whoever started it aborted
+ * (navigated, switched snippet, or React StrictMode double-mounted), which says
+ * nothing about whether *this* caller can succeed. Inheriting it produced a
+ * panel that reported "timed out" without ever having made a request of its own.
+ *
+ * So a failed join falls through and starts a fresh attempt. The retry is
+ * bounded: only one, and only for a caller that did not itself abort.
+ */
 async function cached(key, producer, shouldCache = () => true) {
   if (CACHE.has(key)) return CACHE.get(key);
-  if (inflight.has(key)) return inflight.get(key);
+
+  const existing = inflight.get(key);
+  if (existing) {
+    try {
+      return await existing;
+    } catch {
+      // The shared attempt died. Re-check the cache in case a third caller
+      // succeeded in the meantime, then fall through and run our own.
+      if (CACHE.has(key)) return CACHE.get(key);
+    }
+  }
 
   const p = producer()
     .then((value) => {
       if (shouldCache(value)) CACHE.set(key, value);
       return value;
     })
-    .finally(() => inflight.delete(key));
+    .finally(() => {
+      // Only clear the slot if it is still ours — a later caller may have
+      // already replaced it after joining our failure.
+      if (inflight.get(key) === p) inflight.delete(key);
+    });
 
   inflight.set(key, p);
   return p;
@@ -46,6 +73,11 @@ function extractJSON(text) {
   } catch (err) {
     throw new AIUnavailable(`Malformed JSON: ${err.message}`, 'bad-response');
   }
+}
+
+/** True when a rejection is "the caller aborted", not "the provider failed". */
+function isAbort(err, signal) {
+  return err?.name === 'AbortError' || Boolean(signal?.aborted);
 }
 
 function hash(str) {
@@ -91,6 +123,14 @@ export async function analyseCode(code, language, { signal } = {}) {
         );
         return { ...extractJSON(raw), source: 'ai' };
       } catch (err) {
+        // An abort is the caller changing its mind, not the model failing.
+        // Rethrowing lets `cached` drop the in-flight entry so the *next*
+        // caller starts a fresh request. Swallowing it into an offline result
+        // meant the dead promise stayed in `inflight` and was handed to
+        // whoever asked next — so re-running the analysis, switching snippets
+        // quickly, or React's StrictMode double-mount all resolved instantly
+        // to a "timed out" reading that never actually retried.
+        if (isAbort(err, signal)) throw err;
         return { ...localAnalysis(code, language), source: 'offline', reason: err.reason ?? 'network', error: err.message };
       }
     },
@@ -157,7 +197,8 @@ export async function suggestQuestions(code, language, { signal } = {}) {
         );
         const parsed = extractJSON(raw);
         return Array.isArray(parsed.questions) && parsed.questions.length ? parsed.questions.slice(0, 4) : localQuestions(code, language);
-      } catch {
+      } catch (err) {
+        if (isAbort(err, signal)) throw err; // see analyseCode
         return localQuestions(code, language);
       }
     },
@@ -220,7 +261,12 @@ export async function generatePassage({ mode, difficulty, words = 60, signal }) 
       },
       { role: 'user', content: `Write ${brief}. ${spice} Respond as {"text": "...", "label": "3-5 word description"${mode === 'quote' ? ', "author": "name"' : ''}}.` },
     ],
-    { maxTokens: 700, temperature: 1.1, signal },
+    // hcnsec caps temperature at 1 and rejects anything above it with a 400
+    // (`'temperature' value must be less or equal than 1`). This call used 1.1,
+    // so the fastest provider failed on *every* passage request and the app
+    // silently fell through to the slower backup — which is why practice text
+    // so often looked like the bundled banks rather than freshly generated.
+    { maxTokens: 700, temperature: 1, signal },
   );
 
   const parsed = extractJSON(raw);

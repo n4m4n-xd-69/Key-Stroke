@@ -29,13 +29,33 @@ export const PROVIDERS = {
     apiKey: env.VITE_HCNSEC_KEY || '',
     supportsStreaming: true,
     /**
-     * Ordered by measured latency on a JSON-analysis task:
-     *   Qwen3.6-35B-A3B 2.6s · DeepSeek-V4-Pro 3.1s · glm-5.1 4.2s
-     *   Kimi-K2.6 6.6s · glm-5.2 8.9s · DeepSeek-V4-Flash 19.8s
+     * Ordered by latency on a 2200-token code analysis — the app's heaviest and
+     * most latency-visible call. Re-measured 2026-08-02:
+     *
+     *   Qwen3.6-35B-A3B 9.5s · step-3.5-flash-2603 16.9s · step-3.5-flash 17.4s
+     *   Kimi-K2.6 23.6s · glm-5.1 29.0s · DeepSeek-V4-Pro 36.3s
+     *   DeepSeek-V4-Flash >40s (did not return) · glm-5.2 >45s
+     *
+     * Rank by workload, not by a ping. On a 20-token completion this order very
+     * nearly inverts — DeepSeek-V4-Flash answers in 1.6s and looks like the
+     * obvious lead — but it is the slowest model here once real output is
+     * involved, and leading with it made every code analysis time out. The
+     * short-prompt ranking is a trap; this list is ordered by the long one.
+     *
+     * Note the interaction with AI_TIMING.modelTimeoutMs (32s): the last three
+     * cannot finish an analysis inside that budget at all. They are kept as tail
+     * fallbacks because short calls — passages, coaching, questions — are well
+     * within reach for them.
      */
-    models: ['Qwen3.6-35B-A3B', 'DeepSeek-V4-Pro', 'glm-5.1', 'Kimi-K2.6', 'glm-5.2'],
-    /** Models that expose `reasoning_content`, for the chat panel's live thinking. */
-    thinkingModels: ['glm-5.1', 'Kimi-K2.6', 'step-3.5-flash', 'step-3.5-flash-2603', 'DeepSeek-V4-Flash'],
+    models: [
+      'Qwen3.6-35B-A3B', 'step-3.5-flash-2603', 'step-3.5-flash', 'Kimi-K2.6',
+      'glm-5.1', 'DeepSeek-V4-Pro', 'DeepSeek-V4-Flash', 'glm-5.2',
+    ],
+    /** Models that expose `reasoning_content`, for the chat panel's live
+     *  thinking. Same long-workload ordering as `models` above. */
+    thinkingModels: ['step-3.5-flash-2603', 'step-3.5-flash', 'Kimi-K2.6', 'glm-5.1', 'DeepSeek-V4-Flash'],
+    /** Provider ceiling. Anything above this is rejected outright with a 400. */
+    maxTemperature: 1,
   },
 
   openrouter: {

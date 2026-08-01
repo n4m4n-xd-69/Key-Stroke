@@ -7,6 +7,7 @@ import {
 import Button, { IconButton } from '../../components/ui/Button.jsx';
 import Segmented from '../../components/ui/Segmented.jsx';
 import Modal from '../../components/ui/Modal.jsx';
+import DecayCounter from '../../components/ui/DecayCounter.jsx';
 import { Card, Chip, ProgressBar, SectionTitle } from '../../components/ui/Primitives.jsx';
 import TypingStage from '../../components/typing/TypingStage.jsx';
 import HandGuide from '../../components/typing/HandGuide.jsx';
@@ -321,8 +322,12 @@ export default function Practice() {
               </div>
               <ProgressBar value={engine.live.progress} className="mb-2" label="Exercise progress" />
               {stage}
+              {/* The keyboard used to sit flush against the stage, so a passage
+                  that filled its last visible line collided with the top row of
+                  keys. A border plus real padding reserves the gap structurally
+                  rather than relying on the stage never being full. */}
               {settings.showKeyboard ? (
-                <div className="mt-3 hidden justify-center md:flex">
+                <div className="mt-4 hidden justify-center border-t border-line/60 pt-4 md:flex">
                   <KeyboardViz nextChar={engine.nextChar} keyStats={stats.keyStats} />
                 </div>
               ) : null}
@@ -370,11 +375,11 @@ export default function Practice() {
           </div>
 
           {settings.showKeyboard ? (
-            <div className="hidden justify-center pb-3 pt-1 md:flex">
+            <div className="mx-3 mt-4 hidden justify-center border-t border-line/60 pb-4 pt-4 sm:mx-5 md:flex">
               <KeyboardViz nextChar={engine.nextChar} keyStats={stats.keyStats} />
             </div>
           ) : (
-            <div className="pb-2" />
+            <div className="pb-3" />
           )}
         </Card>
 
@@ -627,7 +632,11 @@ function Controls({
  */
 function RunPanel({ live, limitSeconds, target, index, compact }) {
   const rows = [
-    { label: 'Words / min', value: Math.round(live.wpm), lead: true },
+    // `decay` routes this through DecayCounter: WPM has to climb the instant you
+    // speed up, but `reset()` zeroes typed-chars and elapsed-ms in the same
+    // frame, so a raw value drops from 80 to 0 between two paints and reads as
+    // a glitch rather than a run ending.
+    { label: 'Words / min', value: live.wpm, lead: true, decay: true },
     { label: 'Accuracy', value: `${Math.round(live.accuracy)}%` },
     { label: 'Errors', value: live.errors, tone: live.errors > 0 ? 'bad' : undefined },
     limitSeconds
@@ -652,7 +661,7 @@ function RunPanel({ live, limitSeconds, target, index, compact }) {
                 r.tone === 'bad' && 'text-bad',
               )}
             >
-              {r.value}
+              {r.decay ? <DecayCounter value={r.value} /> : r.value}
             </span>
           </div>
         ))}

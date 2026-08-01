@@ -6,6 +6,7 @@ import Segmented from '../../components/ui/Segmented.jsx';
 import { Card, Chip, ProgressBar } from '../../components/ui/Primitives.jsx';
 import TypingStage from '../../components/typing/TypingStage.jsx';
 import SessionSummary from '../../components/typing/SessionSummary.jsx';
+import LiveStats from '../../components/typing/LiveStats.jsx';
 import useTypingEngine from '../../components/typing/useTypingEngine.js';
 import AISidebar from './AISidebar.jsx';
 import { useStore, useStats } from '../../lib/store.jsx';
@@ -34,8 +35,11 @@ export default function CodeTyping() {
   const [railOpen, setRailOpen] = useState(true);
   const [railExpanded, setRailExpanded] = useState(false);
   const [result, setResult] = useState(null);
-  /* Selection is always an explicit snippet title — no random option. */
-  const [selection, setSelection] = useState(null);
+  /* Selection is always an explicit snippet title — no random option. Seeded
+     from the same snippet the stage opens with rather than null: a controlled
+     <select value={null}> makes React warn and treats the element as
+     uncontrolled for its first render. */
+  const [selection, setSelection] = useState(() => snippetsFor(languageId, 'normal')[0]?.title ?? '');
 
   const language = LANGUAGE_BY_ID[languageId];
   const available = useMemo(() => snippetsFor(languageId, difficulty), [languageId, difficulty]);
@@ -143,20 +147,11 @@ export default function CodeTyping() {
             Real snippets, real syntax, real punctuation. Indentation is handled for you — brackets are not.
           </p>
         </div>
-        <div className="flex items-center gap-1">
-          <Button icon={SkipForward} onClick={nextSnippet}>
-            Next snippet
-          </Button>
-          <Button
-            variant="brand"
-            icon={Sparkles}
-            onClick={generate}
-            disabled={generating || !aiConfigured()}
-            title={aiConfigured() ? 'Generate a fresh snippet with AI' : 'Add an OpenRouter key to enable'}
-          >
-            {generating ? 'Generating…' : 'AI snippet'}
-          </Button>
-        </div>
+        {/* The header used to hold "Next snippet" and "AI snippet". Both moved
+            directly above the typing area, where the thing they act on is; the
+            header now carries the numbers you actually want in your eyeline
+            while typing. */}
+        <LiveStats live={engine.live} compact />
       </header>
 
       <div
@@ -242,6 +237,23 @@ export default function CodeTyping() {
             {snippet.intro ? (
               <p className="mt-0.5 max-w-[70ch] text-sm leading-relaxed text-ink-2">{snippet.intro}</p>
             ) : null}
+
+            {/* Both snippet actions, directly above the code they replace. */}
+            <div className="mt-1.5 flex flex-wrap items-center gap-1">
+              <Button
+                size="sm"
+                variant="brand"
+                icon={Sparkles}
+                onClick={generate}
+                disabled={generating || !aiConfigured()}
+                title={aiConfigured() ? 'Generate a fresh snippet with AI' : 'Set a provider key in .env.local to enable'}
+              >
+                {generating ? 'Generating…' : 'AI snippet'}
+              </Button>
+              <Button size="sm" icon={SkipForward} onClick={nextSnippet}>
+                Next snippet
+              </Button>
+            </div>
           </div>
 
           <div className="px-2.5 pt-2.5 sm:px-4">

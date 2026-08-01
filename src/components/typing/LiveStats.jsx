@@ -1,23 +1,56 @@
+import DecayCounter from '../ui/DecayCounter.jsx';
 import { cx, mmss } from '../../lib/format.js';
 
 /**
- * The live readout under the stage.
+ * The live readout.
  *
  * WPM is the number people actually watch, so it gets roughly double the type
  * size of its neighbours. Labels sit on --ink-2 rather than --ink-3: at the
  * 10px uppercase size they were technically legible and practically not.
+ *
+ * Two layouts from one source of truth. `compact` is a single horizontal row
+ * sized to sit in a page header; the default is the full bordered grid that
+ * sits under a stage. They exist together so the two typing surfaces can never
+ * drift apart on which figures they show or how they round them.
  */
-export default function LiveStats({ live, limitSeconds, wordTarget, className }) {
+export default function LiveStats({ live, limitSeconds, wordTarget, className, compact = false }) {
   const cells = [
-    { label: 'Words / min', value: Math.round(live.wpm), accent: true, lead: true },
-    { label: 'Accuracy', value: `${Math.round(live.accuracy)}%` },
-    { label: 'Errors', value: live.errors, tone: live.errors > 0 ? 'bad' : undefined },
+    // Raw, not rounded: DecayCounter does its own rounding and needs the
+    // continuous value to ease against.
+    { label: 'Words / min', short: 'WPM', value: live.wpm, accent: true, lead: true, decay: true },
+    { label: 'Accuracy', short: 'ACC', value: `${Math.round(live.accuracy)}%` },
+    { label: 'Errors', short: 'ERR', value: live.errors, tone: live.errors > 0 ? 'bad' : undefined },
     limitSeconds
-      ? { label: 'Time left', value: mmss(live.remaining ?? limitSeconds) }
+      ? { label: 'Time left', short: 'LEFT', value: mmss(live.remaining ?? limitSeconds) }
       : wordTarget
-        ? { label: 'Progress', value: `${Math.round(live.progress * 100)}%` }
-        : { label: 'Elapsed', value: mmss(live.elapsedSec) },
+        ? { label: 'Progress', short: 'PROG', value: `${Math.round(live.progress * 100)}%` }
+        : { label: 'Elapsed', short: 'TIME', value: mmss(live.elapsedSec) },
   ];
+
+  const render = (c) => (c.decay ? <DecayCounter value={c.value} /> : c.value);
+
+  if (compact) {
+    return (
+      <dl className={cx('flex items-center gap-2.5 rounded-lg border border-line bg-surface px-2.5 py-1', className)}>
+        {cells.map((c) => (
+          <div key={c.label} className="flex items-baseline gap-0.5">
+            <dd
+              className={cx(
+                'font-mono font-medium tnum leading-none',
+                c.lead ? 'text-2xl' : 'text-lg',
+                c.accent && 'text-brand',
+                c.tone === 'bad' && 'text-bad',
+                !c.accent && !c.tone && 'text-ink',
+              )}
+            >
+              {render(c)}
+            </dd>
+            <dt className="text-2xs font-extrabold uppercase tracking-[0.08em] text-ink-3">{c.short}</dt>
+          </div>
+        ))}
+      </dl>
+    );
+  }
 
   return (
     <dl className={cx('grid grid-cols-2 sm:grid-cols-4', className)}>
@@ -40,7 +73,7 @@ export default function LiveStats({ live, limitSeconds, wordTarget, className })
               !c.accent && !c.tone && 'text-ink',
             )}
           >
-            {c.value}
+            {render(c)}
           </dd>
           <dt
             className={cx(

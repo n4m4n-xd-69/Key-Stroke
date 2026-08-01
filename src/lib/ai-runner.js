@@ -28,11 +28,15 @@ export const AI_REASON_COPY = {
     label: 'Limit reached',
     detail: 'Every configured provider is rate limited right now. OpenRouter\'s free tier resets at 00:00 UTC.',
   },
-  auth: { label: 'Key rejected', detail: 'A provider refused its API key. Check src/lib/config.js.' },
+  auth: { label: 'Key rejected', detail: 'A provider refused its API key. Check the VITE_*_KEY values in .env.local, or your host\'s environment variables.' },
   network: { label: 'Unreachable', detail: 'No provider responded. Showing a locally computed reading instead.' },
   timeout: { label: 'Timed out', detail: 'Every model took too long to answer. Try again — a faster one may pick it up.' },
-  'no-key': { label: 'No API key', detail: 'Add a provider key to src/lib/config.js to turn the AI features on.' },
+  'no-key': { label: 'No API key', detail: 'Set VITE_HCNSEC_KEY or VITE_OPENROUTER_KEY in .env.local to turn the AI features on.' },
   'bad-response': { label: 'Unreadable reply', detail: 'The model answered with something this app could not parse.' },
+  'bad-request': {
+    label: 'Request rejected',
+    detail: 'A provider refused the request itself. Every attempt will fail the same way until it is fixed — check the console for the provider\'s reason.',
+  },
 };
 
 /* ── Attempt planning ──────────────────────────────────────────────────── */
@@ -87,10 +91,22 @@ function headers(provider) {
 function classify(status, body) {
   if (status === 429) return 'rate-limit';
   if (status === 401 || status === 403) return 'auth';
+  // A 400 is us, not them: a malformed request fails identically on every
+  // attempt, so failover cannot rescue it. It used to classify as 'network',
+  // which is how `temperature: 1.1` went unnoticed while failing 100% of the
+  // lead provider's passage requests.
+  if (status === 400) return 'bad-request';
   return 'network';
 }
 
 async function callOnce({ provider, model, messages, maxTokens, temperature, signal, stream, onThinking, onToken }) {
+  // Clamped per provider rather than at each call site: a caller asking for more
+  // creativity than a provider allows should get that provider's maximum, not a
+  // 400 that failover then has to paper over.
+  const capped = provider.maxTemperature != null
+    ? Math.min(temperature, provider.maxTemperature)
+    : temperature;
+
   const res = await fetch(provider.endpoint, {
     method: 'POST',
     headers: headers(provider),
@@ -99,7 +115,7 @@ async function callOnce({ provider, model, messages, maxTokens, temperature, sig
       model,
       messages,
       max_tokens: maxTokens,
-      temperature,
+      temperature: capped,
       ...(stream ? { stream: true } : {}),
     }),
   });
@@ -279,7 +295,10 @@ export async function complete({
     }
 
     // Everything failed — surface the most actionable reason.
-    const priority = ['auth', 'rate-limit', 'bad-response', 'timeout', 'network'];
+    // Most actionable first. `bad-request` outranks everything: it is the only
+    // reason here that is a bug in this app rather than a condition at the
+    // provider, so it must never be masked by a slower attempt's timeout.
+    const priority = ['bad-request', 'auth', 'rate-limit', 'bad-response', 'timeout', 'network'];
     const best = priority.find((r) => errors.some((e) => e.reason === r)) ?? 'network';
     throw new AIUnavailable(errors.map((e) => e.message).join(' · ').slice(0, 300) || 'All providers failed', best);
   } finally {
