@@ -137,8 +137,24 @@ function Inline({ text }) {
             </code>
           );
         }
-        if (p.type === 'strong') return <strong key={i} className="font-extrabold text-ink">{p.value}</strong>;
-        if (p.type === 'em') return <em key={i} className="italic">{p.value}</em>;
+        // Emphasis recurses: the tokenizer is flat, so `code` inside **bold**
+        // was emitted as raw text and rendered with its backticks showing.
+        // Recursion terminates because each pass strips the delimiters, making
+        // the inner string strictly shorter.
+        if (p.type === 'strong') {
+          return (
+            <strong key={i} className="font-extrabold text-ink">
+              <Inline text={p.value} />
+            </strong>
+          );
+        }
+        if (p.type === 'em') {
+          return (
+            <em key={i} className="italic">
+              <Inline text={p.value} />
+            </em>
+          );
+        }
         if (p.type === 'link') {
           return (
             <a key={i} href={p.href} target="_blank" rel="noreferrer noopener" className="font-semibold text-brand underline">
@@ -152,7 +168,17 @@ function Inline({ text }) {
   );
 }
 
-const INLINE_RE = /(`[^`]+`)|(\*\*[^*]+\*\*)|(\*[^*]+\*)|(\[[^\]]+\]\([^)]+\))/g;
+/**
+ * Emphasis delimiters may not be flanked by whitespace on the inside — the
+ * CommonMark rule, and here a correctness one rather than a nicety. In a
+ * programming app the model writes arithmetic in prose constantly, and the
+ * naive pattern ate it: `2 ** i * 100` matched as bold-then-italic and
+ * rendered as "2 i 10", silently deleting the operators from an explanation
+ * of the very code on screen. Requiring a non-space after the opening run and
+ * before the closing one leaves spaced operators alone while still matching
+ * ordinary **bold** and *italic*.
+ */
+const INLINE_RE = /(`[^`]+`)|(\*\*(?!\s)[^*]+(?<!\s)\*\*)|(\*(?!\s)[^*]+(?<!\s)\*)|(\[[^\]]+\]\([^)]+\))/g;
 
 function parseInline(src) {
   const parts = [];

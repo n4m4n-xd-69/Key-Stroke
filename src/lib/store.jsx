@@ -30,6 +30,7 @@ const EMPTY = {
     handGuideSeen: 0, // shown at most HAND_GUIDE_LIMIT times, then retired
     fullscreen: true, // practice opens as a full-screen focus surface
     lastLanguage: 'javascript', // remembered across sessions in Code typing
+    codeIntroOpen: true, // the long snippet intro, collapsible to just its name
   },
 };
 
