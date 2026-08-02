@@ -63,9 +63,118 @@ function parseFrontMatter(raw, file) {
 }
 
 /**
+ * Multiple-choice questions, parsed from a **Quiz** section.
+ *
+ * Authoring format — one block per question, `####` heading, an optional fenced
+ * snippet, exactly four options, the correct one marked with a leading `*`, and
+ * a `>` explanation shown after answering:
+ *
+ *     #### What does this print?
+ *     ```python
+ *     x = [1, 2]
+ *     y = x
+ *     y.append(3)
+ *     print(x)
+ *     ```
+ *     - [1, 2]
+ *     - *[1, 2, 3]
+ *     - [3]
+ *     - TypeError
+ *     > `y = x` binds a second name to the same list.
+ *
+ * Four options is enforced rather than suggested: a quiz where some questions
+ * offer three and others five reads as sloppy, and a single correct answer is
+ * what makes automatic grading meaningful.
+ */
+function parseQuiz(body, where) {
+  if (!body.trim()) return [];
+
+  const out = [];
+  for (const block of body.split(/^####\s+/m).slice(1)) {
+    const nl = block.indexOf('\n');
+    const prompt = (nl < 0 ? block : block.slice(0, nl)).trim();
+    const rest = nl < 0 ? '' : block.slice(nl + 1);
+
+    const fence = rest.match(/```(\w*)\r?\n([\s\S]*?)```/);
+    const code = fence ? fence[2].replace(/\s+$/, '') : '';
+
+    // Options live outside the fence, so strip it before scanning for them —
+    // a snippet line starting with "- " would otherwise become an option.
+    const afterFence = fence ? rest.slice(rest.indexOf(fence[0]) + fence[0].length) : rest;
+
+    const options = [];
+    let answer = -1;
+    for (const line of afterFence.split(/\r?\n/)) {
+      const m = line.match(/^\s*-\s+(.*)$/);
+      if (!m) continue;
+      const text = m[1].trim();
+      if (text.startsWith('*')) {
+        answer = options.length;
+        options.push(text.slice(1).trim());
+      } else {
+        options.push(text);
+      }
+    }
+
+    const explainLine = afterFence.split(/\r?\n/).find((l) => l.trim().startsWith('>'));
+    const explain = explainLine ? explainLine.replace(/^\s*>\s?/, '').trim() : '';
+
+    if (options.length !== 4) {
+      fail(where, `quiz "${prompt.slice(0, 40)}…" has ${options.length} options, needs exactly 4`);
+      continue;
+    }
+    if (answer === -1) {
+      fail(where, `quiz "${prompt.slice(0, 40)}…" marks no correct option with *`);
+      continue;
+    }
+    if (!explain) fail(where, `quiz "${prompt.slice(0, 40)}…" has no > explanation`);
+
+    out.push(spreadAnswer({ prompt, code, lang: fence?.[1] || '', options, answer, explain }));
+  }
+  return out;
+}
+
+/**
+ * Rotates a question's options so the correct one is not always in the same
+ * place.
+ *
+ * Authoring naturally puts the right answer second — you write the plausible
+ * wrong idea, then the correction. Across the corpus that produced 82 of 96
+ * answers at index 1, which is a quiz you can pass by always clicking B.
+ *
+ * The rotation is derived from the prompt text rather than randomised, so it is
+ * identical on every build: a regeneration must not silently reshuffle answers
+ * under learners mid-module, and a diff of the generated bundle should stay
+ * empty when the source has not changed.
+ *
+ * Summary options ("Both", "Neither", "All three", "None of them") are pinned
+ * in place. They read as a closing choice and refer to the *other* options, so
+ * rotating one to the top makes the question incoherent.
+ */
+const IS_SUMMARY = /^(both|neither|all |none |either)/i;
+
+function spreadAnswer(q) {
+  const movable = q.options.map((o, i) => i).filter((i) => !IS_SUMMARY.test(q.options[i]));
+  // Nothing to gain if the answer is pinned or there is only one free slot.
+  if (movable.length < 2 || !movable.includes(q.answer)) return q;
+
+  let h = 0;
+  for (let i = 0; i < q.prompt.length; i++) h = (Math.imul(31, h) + q.prompt.charCodeAt(i)) | 0;
+  const shift = Math.abs(h) % movable.length;
+  if (shift === 0) return q;
+
+  const rotated = movable.map((_, i) => q.options[movable[(i + shift) % movable.length]]);
+  const options = [...q.options];
+  movable.forEach((slot, i) => { options[slot] = rotated[i]; });
+
+  const answerText = q.options[q.answer];
+  return { ...q, options, answer: options.indexOf(answerText) };
+}
+
+/**
  * A module is a `### Module N — Title` heading, a block of `> key: value`
- * attributes, then **Learn** / **Practice** / **Misconceptions** / **Questions**
- * sections.
+ * attributes, then **Learn** / **Practice** / **Quiz** / **Misconceptions** /
+ * **Questions** sections.
  */
 function parseModules(body, file) {
   const chunks = body.split(/^###\s+/m).slice(1);
@@ -96,13 +205,18 @@ function parseModules(body, file) {
     }
 
     const section = (name) => {
-      const re = new RegExp(`\\*\\*${name}\\.?\\*\\*\\s*([\\s\\S]*?)(?=\\n\\*\\*|$)`, 'i');
+      // Terminates on the next section heading — a line beginning `**Word` —
+      // rather than on any `**` at line start. A Quiz block's fenced Python can
+      // legitimately begin a line with `**kwargs`, which ended the section
+      // early and silently truncated the quiz.
+      const re = new RegExp(`\\*\\*${name}\\.?\\*\\*\\s*([\\s\\S]*?)(?=\\n\\*\\*[A-Z]\\w*\\.?\\*\\*|$)`, 'i');
       const m = rest.match(re);
       return m ? m[1].trim() : '';
     };
 
     const learn = section('Learn');
     const practice = section('Practice');
+    const quiz = parseQuiz(section('Quiz'), where);
     const misconceptions = section('Misconceptions')
       .split(/\r?\n/)
       .map((l) => l.replace(/^\s*[-*]\s*/, '').trim())
@@ -155,6 +269,7 @@ function parseModules(body, file) {
       minutes: Number(attrs.minutes) || 20,
       learn,
       practice,
+      quiz,
       misconceptions,
       questions,
     });

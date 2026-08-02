@@ -26,6 +26,53 @@ Declare dependencies in `pyproject.toml` rather than installing ad hoc, so the p
 **Practice.**
 Create a project directory with a virtual environment and a `pyproject.toml`. Write `greet.py` that prints a greeting, then run it three ways: directly, with `-m`, and by importing it in the REPL. Deactivate the environment and observe what breaks.
 
+**Quiz.**
+
+#### What does this script print?
+```python
+print("one")
+print("two")
+print("three"
+```
+- one\ntwo
+- one\ntwo\nthree
+- *Nothing at all
+- one
+> The unclosed parenthesis is a **syntax error**. The whole file is compiled to bytecode before any of it runs, so nothing executes — this is the one class of error that stops line 1 from running.
+
+#### You are inside an activated venv. Where does `pip install requests` put the package?
+```python
+python3 -m venv .venv
+source .venv/bin/activate
+pip install requests
+```
+- Into the system Python's site-packages
+- *Into .venv/lib/pythonX.Y/site-packages
+- Into ~/.local/lib
+- Into the current directory
+> Activating puts the venv first on `PATH`, so `pip` is the venv's pip and installs into its own `site-packages`. That isolation is the entire point.
+
+#### What is the difference between these two commands?
+```python
+python3 http/server.py
+python3 -m http.server
+```
+- No difference, both run a file
+- *The first runs a file by path; the second runs an installed module by name
+- The second is a typo for the first
+- The first is faster
+> `-m` resolves a *module* on the import path and runs it as `__main__`. It works from any directory, whereas the path form needs the file to exist right there.
+
+#### What appears in `__pycache__` after you import a module?
+```python
+import mymodule
+```
+- A copy of the source
+- *Compiled bytecode (.pyc)
+- Machine code for your CPU
+- Nothing — Python does not cache
+> Python compiles source to **bytecode** and caches it so later imports skip recompilation. It is generated, machine-specific, and belongs in `.gitignore`.
+
 **Misconceptions.**
 - "Python is not compiled." It is — to bytecode, cached in `__pycache__`. It is simply not compiled to machine code ahead of time.
 - "I will make a venv when the project gets big." Dependency conflicts arrive on the second project, not the tenth.
@@ -62,6 +109,50 @@ Conversion is explicit: `int("42")`, `str(42)`, `float("3.5")`. Python will not 
 
 **Practice.**
 Write a script demonstrating float imprecision, then fix the same calculation with `Decimal`. Show `2 ** 200` printing exactly. Prove `bool` is an `int` subclass with `isinstance`.
+
+**Quiz.**
+
+#### What does this print?
+```python
+print(0.1 + 0.2)
+print(0.1 + 0.2 == 0.3)
+```
+- 0.3 and True
+- *0.30000000000000004 and False
+- 0.3 and False
+- 0.30000000000000004 and True
+> 0.1 and 0.2 have no exact binary representation, so the sum lands a hair above 0.3. This is IEEE-754 doing exactly what it specifies, not a Python bug — use `Decimal` when exactness matters.
+
+#### What does this print?
+```python
+print(True + True + True)
+print(isinstance(True, int))
+```
+- *3 and True
+- TypeError
+- True and True
+- 1 and False
+> `bool` is a **subclass of int**, with `True == 1`. So they sum to 3, and `isinstance(True, int)` is `True`. That is why `sum(list_of_bools)` counts them.
+
+#### What does this print?
+```python
+print(2 ** 100)
+```
+- An overflow error
+- 1.2676506002282294e+30
+- *1267650600228229401496703205376
+- 0
+> Python's `int` is **arbitrary precision** — it grows to fit memory, so there is no overflow and no silent conversion to float. `**` on ints stays exact.
+
+#### Which comparison is the correct way to test for `None`?
+```python
+value = None
+```
+- value == None
+- *value is None
+- value = None
+- not value
+> `None` is a singleton, so identity is the right test. `==` can be overridden by a class, and `not value` is also true for `0`, `""` and `[]` — a different question entirely.
 
 **Misconceptions.**
 - "Floats are broken." They are exact binary fractions; decimal fractions like 0.1 have no finite binary form, just as 1/3 has none in decimal.
@@ -108,6 +199,61 @@ Copying: `list(x)` or `x[:]` makes a **shallow** copy — a new outer list holdi
 **Practice.**
 Write a function with a mutable default and call it three times to watch the bug. Fix it with the `None` sentinel. Then build a nested list, shallow-copy it, mutate an inner element, and show both copies changed.
 
+**Quiz.**
+
+#### What does this print?
+```python
+x = [1, 2]
+y = x
+y.append(3)
+print(x)
+```
+- [1, 2]
+- *[1, 2, 3]
+- [3]
+- TypeError
+> `y = x` binds a **second name to the same list**. `append` mutates that one object, so the change is visible through either name.
+
+#### What does this print?
+```python
+x = [1, 2]
+y = x
+y = y + [3]
+print(x)
+```
+- *[1, 2]
+- [1, 2, 3]
+- [3]
+- TypeError
+> `y + [3]` builds a **new** list and rebinds `y` to it. Nothing mutated the original, so `x` is untouched. Mutation versus rebinding is the whole distinction.
+
+#### What does this print?
+```python
+def add(item, bucket=[]):
+    bucket.append(item)
+    return bucket
+
+print(add(1))
+print(add(2))
+```
+- [1] then [2]
+- *[1] then [1, 2]
+- [1, 2] then [1, 2]
+- TypeError
+> The default is evaluated **once, at definition**, so every call without `bucket` shares one list that grows forever. Fix with `bucket=None` and create it inside.
+
+#### What does this print?
+```python
+t = ([1, 2], 3)
+t[0].append(4)
+print(t)
+```
+- TypeError — tuples are immutable
+- ([1, 2], 3)
+- *([1, 2, 4], 3)
+- ([1, 2], 3, 4)
+> The tuple's *bindings* are fixed, but the list it points at is still mutable. Immutability is shallow — a tuple guarantees you cannot swap its elements, not that they cannot change.
+
 **Misconceptions.**
 - "Python passes by value / by reference." Neither. It passes the *object reference by value* — you can mutate the object but not rebind the caller's name.
 - "`tuple` is deeply immutable." The tuple cannot be rebound, but a list *inside* it can still be mutated.
@@ -143,6 +289,55 @@ The walrus `:=` assigns inside an expression: `if (n := len(data)) > 10:` binds 
 
 **Practice.**
 Write a function normalising a user record that uses `or` for defaults, then find the input where that gives the wrong answer and fix it with an explicit `is None`.
+
+**Quiz.**
+
+#### What does this print?
+```python
+print(7 / 2)
+print(7 // 2)
+print(-7 // 2)
+```
+- 3.5, 3, -3
+- *3.5, 3, -4
+- 3, 3, -3
+- 3.5, 3.0, -3.5
+> `/` always produces a float. `//` **floors** — toward negative infinity — so `-7 // 2` is `-4`, not the `-3` you get from truncation.
+
+#### What does this print?
+```python
+name = ""
+print(name or "guest")
+
+qty = 0
+print(qty or 10)
+```
+- guest and 0
+- *guest and 10
+- '' and 0
+- TypeError
+> `or` returns the first **truthy** operand. That makes a neat default for strings, but `0` is falsy — so a real quantity of zero is silently replaced. Use `is None` when zero is a legitimate value.
+
+#### What does this print?
+```python
+print(1 < 2 < 3)
+print(3 > 2 > 1)
+```
+- *True and True
+- SyntaxError
+- True and False
+- False and False
+> Python **chains** comparisons the way mathematics does: `1 < 2 < 3` means `1 < 2 and 2 < 3`, with the middle term evaluated once.
+
+#### Which of these is truthy?
+```python
+candidates = [0, "", [], "0"]
+```
+- 0
+- ""
+- []
+- *"0"
+> `"0"` is a non-empty string, so it is truthy — a classic trap when reading values from a config file or form input where everything arrives as text.
 
 **Misconceptions.**
 - "`and`/`or` return booleans." They return one of their operands.
@@ -180,6 +375,55 @@ Python's oddest control-flow feature is `for ... else`. The `else` runs when the
 
 **Practice.**
 Write a linear search using `for ... else` that reports both hit and miss without a flag variable. Then rewrite a nested `range(len(...))` loop using `enumerate` and `zip`.
+
+**Quiz.**
+
+#### What does this print?
+```python
+for n in [1, 3, 5]:
+    if n == 4:
+        break
+else:
+    print("not found")
+```
+- Nothing
+- *not found
+- SyntaxError
+- 4
+> A `for ... else` runs its `else` when the loop finished **without** hitting `break`. Read it as "no-break". Nothing equalled 4, so nothing broke, so `else` runs.
+
+#### What does this print?
+```python
+for i in range(3):
+    pass
+print(i)
+```
+- 3
+- *2
+- 0
+- NameError
+> `range(3)` yields 0, 1, 2 — the stop value is exclusive. The loop variable survives the loop, holding its final value.
+
+#### What does this print?
+```python
+print(list(zip([1, 2, 3], ["a", "b"])))
+```
+- [(1,'a'), (2,'b'), (3,None)]
+- *[(1,'a'), (2,'b')]
+- ValueError
+- [(1,2,3), ('a','b')]
+> `zip` stops at the **shortest** input and drops the rest silently. Use `itertools.zip_longest` when you need padding, or `strict=True` (3.10+) to make a mismatch an error.
+
+#### What does this print?
+```python
+for i, name in enumerate(["a", "b"], start=1):
+    print(i, name)
+```
+- 0 a / 1 b
+- *1 a / 2 b
+- 1 b / 2 a
+- TypeError
+> `enumerate` yields `(index, item)` pairs, and `start=` sets where the count begins. It is the idiomatic replacement for `range(len(...))` when you need both.
 
 **Misconceptions.**
 - "`for ... else` runs if the loop body did not." It runs if the loop was not `break`-ed.
@@ -220,6 +464,61 @@ Docstrings are the first statement in the body, available as `__doc__` and to `h
 **Practice.**
 Write a `retry(fn, attempts=3, *, delay=1.0)` helper that takes a callable, retries it, and forces `delay` to be keyword-only. Add a docstring and full type hints.
 
+**Quiz.**
+
+#### What does this print?
+```python
+def f():
+    pass
+
+print(f())
+```
+- Nothing
+- *None
+- 0
+- TypeError
+> Every function returns something. Without an explicit `return`, that something is `None`, and `print` renders it as `None`.
+
+#### What happens here?
+```python
+count = 0
+
+def bump():
+    print(count)
+    count = count + 1
+
+bump()
+```
+- Prints 0
+- *UnboundLocalError
+- Prints 1
+- NameError
+> Assigning to `count` anywhere in the function makes it **local for the whole function**, so the read on the line before has no value yet. `global count` opts out — but rebinding a global is usually the wrong design.
+
+#### Which call is valid?
+```python
+def connect(host, *, timeout=30):
+    ...
+```
+- connect("db", 5)
+- *connect("db", timeout=5)
+- connect(host="db", 5)
+- connect(5, "db")
+> A bare `*` makes everything after it **keyword-only**. That is what stops `connect("db", 5)` — where nobody can tell what 5 means a year later — from being accepted at all.
+
+#### What does this print?
+```python
+def f(*args, **kwargs):
+    print(type(args).__name__, type(kwargs).__name__)
+
+f(1, 2, a=3)
+```
+- list dict
+- *tuple dict
+- tuple list
+- dict tuple
+> `*args` collects extra positionals into a **tuple**; `**kwargs` collects extra keywords into a **dict**.
+
 **Misconceptions.**
 - "`*args` means pointers." It means "collect the rest".
 - "A function without `return` returns nothing." It returns `None`.
@@ -257,6 +556,56 @@ Build strings from many pieces with `"".join(parts)`, not `+=` in a loop: string
 
 **Practice.**
 Write a report formatter aligning names and right-aligned currency in columns using f-string specs. Then benchmark `+=` against `"".join` over 100,000 pieces.
+
+**Quiz.**
+
+#### What does this print?
+```python
+s = "hello"
+s.upper()
+print(s)
+```
+- HELLO
+- *hello
+- None
+- AttributeError
+> Strings are **immutable**. `.upper()` returns a new string and the result was discarded, so `s` is unchanged. You needed `s = s.upper()`.
+
+#### What does this print?
+```python
+print(f"{3.14159:.2f}")
+print(f"{1234567:,}")
+```
+- *3.14 and 1,234,567
+- 3.142 and 1234567
+- 3.14 and 1234567
+- 3.14159 and 1,234,567
+> `.2f` fixes two decimal places; `,` inserts thousands separators. The whole mini-language after `:` controls width, alignment, precision and sign.
+
+#### What does this print?
+```python
+print("abcdef"[1:4])
+print("abcdef"[::-1])
+```
+- *bcd and fedcba
+- bcde and fedcba
+- abc and abcdef
+- bcd and abcdef
+> Slices are `[start:stop:step]` with **stop exclusive**, so `[1:4]` gives indices 1, 2, 3. A step of `-1` walks backwards, reversing the string.
+
+#### Why is the second loop preferred for 100,000 pieces?
+```python
+out = ""
+for p in parts:
+    out += p
+
+out = "".join(parts)
+```
+- They are identical in speed
+- *join avoids repeatedly copying the whole accumulated string
+- += does not work on strings
+- join uses less disk
+> Strings are immutable, so `+=` builds a brand-new string each iteration and copies everything accumulated so far — quadratic overall. `join` sizes the result once and fills it.
 
 **Misconceptions.**
 - "Strings are mutable because `s += 'x'` works." That rebinds `s` to a new string.
@@ -297,6 +646,55 @@ Dict essentials: `d.get(k, default)` avoids `KeyError`; `d.setdefault(k, [])` fe
 **Practice.**
 Take a list of 10,000 records and write a function finding items whose id appears in a second list — first with a nested loop, then with a set. Time both. Then group records by category using `defaultdict`.
 
+**Quiz.**
+
+#### Which lookup is O(1) on average?
+```python
+x in [1, 2, 3]
+x in {1, 2, 3}
+```
+- The list
+- *The set
+- Both
+- Neither
+> A set hashes the value and jumps straight to a bucket. A list must compare element by element — O(n). Converting to a set before a membership loop is the most common easy win in beginner code.
+
+#### What does this raise?
+```python
+d = {}
+d[[1, 2]] = "x"
+```
+- Nothing, it works
+- *TypeError: unhashable type: 'list'
+- KeyError
+- ValueError
+> Dict keys must be **hashable**, and a mutable object cannot be — its hash would change while it sat in the table. A tuple works, because it cannot change.
+
+#### What does this print?
+```python
+d = {"b": 1, "a": 2, "c": 3}
+print(list(d))
+```
+- ['a', 'b', 'c']
+- *['b', 'a', 'c']
+- Arbitrary order
+- [1, 2, 3]
+> Dicts have preserved **insertion order** since Python 3.7 — it is a language guarantee, not an implementation accident. They are not sorted.
+
+#### What does this print?
+```python
+from collections import defaultdict
+
+g = defaultdict(list)
+g["a"].append(1)
+print(dict(g))
+```
+- KeyError
+- *{'a': [1]}
+- {'a': 1}
+- {}
+> A `defaultdict` calls its factory on a missing key, so `g["a"]` creates an empty list and appends to it — no `if key not in` dance needed.
+
 **Misconceptions.**
 - "Dicts are unordered." Not since 3.7 — insertion order is guaranteed.
 - "Tuples are just immutable lists." They are conventionally *records* with meaning per position.
@@ -328,6 +726,52 @@ The generator form `(x*2 for x in big)` is **lazy**: it produces values on deman
 
 **Practice.**
 Rewrite three nested-loop transformations as comprehensions, then deliberately write one so dense you would reject it in review and convert it back. Read a large file's line lengths with a generator and confirm memory stays flat.
+
+**Quiz.**
+
+#### What does this print?
+```python
+g = (x for x in range(3))
+print(list(g))
+print(list(g))
+```
+- [0, 1, 2] then [0, 1, 2]
+- *[0, 1, 2] then []
+- [0, 1, 2] then StopIteration
+- [] then []
+> A generator is **single-pass**. The first `list()` exhausts it; the second finds nothing left. If you need two passes, materialise it or build it twice.
+
+#### What does this build?
+```python
+result = (x * 2 for x in range(5))
+print(type(result).__name__)
+```
+- tuple
+- list
+- *generator
+- set
+> There is **no tuple comprehension**. Parentheses give a lazy generator; use `tuple(...)` around it if you actually want a tuple.
+
+#### What does this print?
+```python
+print({x: x**2 for x in range(3)})
+```
+- {0, 1, 4}
+- *{0: 0, 1: 1, 2: 4}
+- [0, 1, 4]
+- SyntaxError
+> A `key: value` pair inside braces makes a **dict** comprehension. Braces with bare values would make a set instead.
+
+#### Which uses roughly constant memory over a 10 GB file?
+```python
+a = sum([len(l) for l in open("big.txt")])
+b = sum(len(l) for l in open("big.txt"))
+```
+- Both
+- Only a
+- *Only b
+- Neither
+> The list comprehension in `a` builds every length in memory first. The generator expression in `b` yields one at a time, so `sum` consumes them as they arrive.
 
 **Misconceptions.**
 - "Comprehensions are always better." Past two clauses, readability loses.
@@ -368,6 +812,53 @@ Prefer **absolute imports** (`from myapp.models import User`) over relative ones
 **Practice.**
 Restructure a single 400-line script into a package with `models`, `services` and `cli` modules, an entry point behind the `__main__` guard, and absolute imports. Install it editable and run it by module name.
 
+**Quiz.**
+
+#### Three separate files each `import config`. How many times does config.py's top-level code run?
+```python
+# config.py
+print("loading config")
+SETTINGS = {}
+```
+- Three times
+- *Once
+- Once per function call
+- Never
+> The first import executes the module and caches it in `sys.modules`; later imports get the cached object. That is exactly why module-level side effects — opening a connection, reading a file — are a trap.
+
+#### What does this print when run as `python3 app.py`, and when imported?
+```python
+# app.py
+print(__name__)
+```
+- app then app
+- *__main__ then app
+- app then __main__
+- __main__ then __main__
+> Run directly, a module's `__name__` is `"__main__"`. Imported, it is the module's own name — which is what the `if __name__ == "__main__":` guard tests.
+
+#### Which import style survives the file being run directly?
+```python
+from .models import User
+from myapp.models import User
+```
+- The relative one
+- *The absolute one
+- Both
+- Neither
+> Relative imports need a package context, so they break when a file is executed as a script. Absolute imports resolve the same way either way.
+
+#### What is the right fix for two modules importing each other?
+```python
+# a.py -> imports b
+# b.py -> imports a
+```
+- Move one import inside a function
+- *Extract the shared piece into a third module
+- Use relative imports
+- Rename one module
+> A cycle is a design signal: the two modules share something that belongs somewhere else. Deferring the import into a function hides the problem rather than removing it.
+
 **Misconceptions.**
 - "Import runs the file every time." It runs once and caches.
 - "`__init__.py` is required." Not since 3.3 (namespace packages), but it is still the clearer default.
@@ -407,6 +898,66 @@ EAFP ("easier to ask forgiveness than permission") is idiomatic Python: try the 
 **Practice.**
 Write a config loader raising a custom `ConfigError` chained from the underlying `OSError` or `JSONDecodeError`. Prove `finally` runs on the `return` path. Then find code with `except Exception: pass` and narrow it.
 
+**Quiz.**
+
+#### What does this print?
+```python
+def f():
+    try:
+        return "try"
+    finally:
+        print("finally")
+
+print(f())
+```
+- try
+- *finally then try
+- try then finally
+- finally
+> `finally` runs **before** the function actually returns — the return value is computed, then cleanup runs, then it is handed back. That is what makes `finally` safe for releasing resources.
+
+#### Why is this dangerous?
+```python
+try:
+    run()
+except:
+    pass
+```
+- It is not, it is defensive
+- *It swallows KeyboardInterrupt and SystemExit too
+- It is slower than except Exception
+- It only catches syntax errors
+> A bare `except:` catches `BaseException`, which includes `KeyboardInterrupt` and `SystemExit` — so Ctrl-C stops working and the process refuses to die. It also hides every bug you needed to see.
+
+#### What does `from` preserve here?
+```python
+try:
+    json.loads(raw)
+except ValueError as err:
+    raise ConfigError("bad config") from err
+```
+- Nothing, it is decorative
+- *The original exception as the documented cause, with its traceback
+- The line number only
+- The variable name
+> Chaining keeps the underlying failure attached, so the traceback shows both what went wrong at the bottom and what it meant at the top. Without it you lose the actual cause.
+
+#### Which is the EAFP version, and why is it safer?
+```python
+if os.path.exists(p):
+    open(p)
+
+try:
+    open(p)
+except FileNotFoundError:
+    ...
+```
+- The first — checking is always safer
+- *The second — no gap between check and use
+- They are identical
+- The first, because it avoids exceptions
+> Check-then-act leaves a window where the file can vanish between the two lines. Trying the operation and handling failure removes the race entirely — and is idiomatic Python.
+
 **Misconceptions.**
 - "Exceptions are for exceptional cases only." Python uses them for ordinary control flow, e.g. `StopIteration`.
 - "`finally` is skipped if you return in `try`." It runs first.
@@ -442,6 +993,56 @@ Write your own context manager with `contextlib.contextmanager`: everything befo
 
 **Practice.**
 Write a `Path`-based function that walks a directory tree, reads every `.txt` with explicit encoding, and returns total word counts — streaming, never loading a whole file. Add a `@contextmanager` timer that reports elapsed time even when the body raises.
+
+**Quiz.**
+
+#### What is wrong with this on a Windows machine?
+```python
+with open("notes.txt") as f:
+    text = f.read()
+```
+- Nothing at all
+- *No encoding, so it uses a platform default and can mangle text
+- with is unnecessary
+- read() is deprecated
+> Without `encoding=`, Python picks a platform-dependent default. The same code then reads correctly on Linux and produces mojibake elsewhere — always pass `encoding="utf-8"`.
+
+#### What does this produce?
+```python
+from pathlib import Path
+print(Path("data") / "raw" / "x.csv")
+```
+- A TypeError — you cannot divide paths
+- *data/raw/x.csv, with the right separator for the OS
+- The number 0
+- A list of three parts
+> `Path` overloads `/` to mean "join a path segment". It picks the correct separator per platform, which removes a whole family of string-concatenation bugs.
+
+#### Which survives a 5 GB file?
+```python
+a = f.read().split("\n")
+b = [line for line in f]
+c = (line for line in f)
+```
+- Only a
+- *Only c
+- b and c
+- All three
+> `a` loads the whole file, and `b` builds a list of every line — both hold it all in memory. Only the generator in `c` streams one line at a time.
+
+#### In a `@contextmanager`, which part runs if the body raises?
+```python
+@contextmanager
+def timer():
+    start = time.time()
+    yield
+    print(time.time() - start)
+```
+- Everything, including the print
+- *The print is skipped — the exception propagates from the yield
+- Nothing runs
+- The function retries
+> An exception in the body is raised **at the `yield`**, so anything after it is skipped. Teardown that must always run belongs in a `try: yield / finally:` inside the manager.
 
 **Misconceptions.**
 - "CPython closes files for me." Refcounting usually does, promptly-ish. It is not a guarantee, and not true on other implementations.
@@ -481,6 +1082,58 @@ Properties turn a method into an attribute: `@property` for the getter, `@x.sett
 **Practice.**
 Model an `Order` with `@dataclass`, a `Decimal` total computed as a `@property`, a `from_dict` classmethod, and a frozen `Money` value type. Then take a three-level inheritance chain and flatten it with composition.
 
+**Quiz.**
+
+#### What does this print?
+```python
+class Bag:
+    items = []
+
+a, b = Bag(), Bag()
+a.items.append(1)
+print(b.items)
+```
+- []
+- *[1]
+- AttributeError
+- None
+> `items` is a **class attribute**, shared by every instance. Mutating it through one instance changes it for all — the same trap as a mutable default argument. Assign it in `__init__` instead.
+
+#### What does `@dataclass` generate?
+```python
+@dataclass
+class Point:
+    x: int
+    y: int
+```
+- Only __init__
+- *__init__, __repr__ and __eq__
+- Nothing — the decorator is a type hint
+- Getters and setters
+> It writes the boilerplate from the annotated fields: a constructor, a readable repr, and field-by-field equality. `frozen=True` additionally makes it immutable and hashable.
+
+#### Why does this fail at class definition time?
+```python
+@dataclass
+class Cart:
+    items: list = []
+```
+- list is not a valid annotation
+- *Mutable defaults are rejected — use field(default_factory=list)
+- dataclass needs an __init__
+- It does not fail
+> `dataclass` refuses a mutable default precisely because it would be shared across instances. `field(default_factory=list)` builds a fresh list per instance.
+
+#### Which method is the idiomatic alternative constructor?
+```python
+User.from_json(payload)
+```
+- @staticmethod, because it needs no instance
+- *@classmethod, because it receives cls and can build the right subclass
+- @property
+- A plain function
+> `@classmethod` receives the class, so a subclass calling it constructs the subclass rather than hard-coding the base. That is the whole reason to prefer it here.
+
 **Misconceptions.**
 - "`__init__` is the constructor." It initialises an already-allocated object.
 - "Class attributes are per-instance defaults." They are shared; mutating one mutates it for all.
@@ -516,6 +1169,58 @@ Python's "magic" is a published protocol. Operators and built-ins delegate to **
 
 **Practice.**
 Build a `Vector` supporting `+`, `*`, `==`, `len()`, indexing and iteration, with a correct `__repr__`. Then measure memory of a million instances with and without `__slots__`.
+
+**Quiz.**
+
+#### What happens after defining `__eq__` but not `__hash__`?
+```python
+class P:
+    def __eq__(self, other): return True
+
+print({P()})
+```
+- It works fine
+- *TypeError: unhashable type
+- It prints an empty set
+- RecursionError
+> Defining `__eq__` sets `__hash__` to `None`. That is deliberate: objects that compare equal must hash equal, so Python makes you decide rather than silently breaking your sets and dicts.
+
+#### Which is shown in a traceback and a debugger?
+```python
+class P:
+    def __str__(self): return "pretty"
+    def __repr__(self): return "P()"
+```
+- __str__
+- *__repr__
+- Both
+- Neither
+> `__repr__` is the unambiguous developer-facing form and is what appears in tracebacks, debuggers and containers. If you write only one, write this one — `str()` falls back to it.
+
+#### What does this print?
+```python
+class C:
+    def __call__(self): return "called"
+
+c = C()
+print(c())
+```
+- TypeError
+- *called
+- C()
+- None
+> `__call__` makes an **instance** callable like a function. It is how decorators-as-classes and many framework objects work.
+
+#### What does `__slots__` trade away?
+```python
+class P:
+    __slots__ = ("x", "y")
+```
+- Speed, for memory
+- *The per-instance __dict__, so no arbitrary new attributes
+- Inheritance entirely
+- Nothing at all
+> Removing the per-instance `__dict__` is where the memory saving comes from — and it is also why `p.z = 1` then fails. Worth it for millions of instances, pointless for a handful.
 
 **Misconceptions.**
 - "Dunders are private internals." They are the public extension protocol.
@@ -553,6 +1258,53 @@ Adopt gradually: annotate new code and module boundaries first, run `mypy` in CI
 **Practice.**
 Annotate an existing module fully and run `mypy --strict` until clean. Replace a loosely typed dict parameter with a `TypedDict`, then define a `Protocol` for a dependency and check that two unrelated classes satisfy it.
 
+**Quiz.**
+
+#### What happens at runtime?
+```python
+def double(x: int) -> int:
+    return x * 2
+
+print(double("ab"))
+```
+- TypeError immediately
+- *It prints abab — annotations are not enforced
+- SyntaxError
+- It prints 0
+> Annotations are **metadata**, not runtime checks. `"ab" * 2` is valid Python, so it runs happily. Only `mypy` or `pyright` would object — which is exactly why running one matters.
+
+#### Which is the modern equivalent of `Optional[int]`?
+```python
+from typing import Optional
+```
+- *int | None
+- list[int]
+- Any
+- int?
+> `X | None` is the built-in union syntax and needs no import. `Optional[X]` means precisely that and remains valid, but the pipe form is now idiomatic.
+
+#### Which signature is most useful to callers?
+```python
+def total(items: list[int]) -> int: ...
+def total(items: Iterable[int]) -> int: ...
+```
+- The list version — it is more specific
+- *The Iterable version — it accepts tuples, sets and generators too
+- They are identical
+- Neither is valid
+> Accept the **widest** type you can and return the most specific. Demanding a `list` forces callers to materialise a generator for no reason.
+
+#### What problem does `Protocol` solve?
+```python
+class Readable(Protocol):
+    def read(self) -> str: ...
+```
+- It creates a base class others must inherit
+- *It matches any object with the right shape, without inheritance
+- It validates types at runtime
+- It replaces dataclasses
+> Structural typing: anything with a matching `read` satisfies it, including classes you do not own and cannot make inherit from you. That is duck typing the checker can verify.
+
 **Misconceptions.**
 - "Type hints slow Python down." They are not evaluated at runtime in normal use.
 - "Hints guarantee correctness." Only a checker does, and only for what it can see.
@@ -586,6 +1338,56 @@ Python ships with enough to avoid most dependencies. Knowing what is already the
 
 **Practice.**
 Rewrite a script that hand-rolls counting, grouping and memoisation using `Counter`, `groupby` and `lru_cache`. Then find every naive `datetime` in a codebase and make it timezone-aware.
+
+**Quiz.**
+
+#### What does this print?
+```python
+from itertools import groupby
+
+data = ["a", "b", "a"]
+print([k for k, _ in groupby(data)])
+```
+- ['a', 'b']
+- *['a', 'b', 'a']
+- ['a']
+- An error
+> `groupby` groups **consecutive** runs, not equal values anywhere. The two `"a"`s are not adjacent, so they form separate groups — sort first if you want true grouping.
+
+#### Which is safe for a password-reset token?
+```python
+import random, secrets
+```
+- random.random()
+- *secrets.token_urlsafe()
+- random.choice()
+- Either — they are the same
+> `random` is a deterministic PRNG seeded predictably — fine for simulations, disastrous for anything security-relevant. `secrets` draws from the OS cryptographic source.
+
+#### What is wrong with this comparison?
+```python
+from datetime import datetime, timezone
+
+a = datetime.now()
+b = datetime.now(timezone.utc)
+print(a < b)
+```
+- Nothing
+- *TypeError — naive and aware datetimes cannot be compared
+- It always prints True
+- It always prints False
+> A naive datetime has no timezone, so Python refuses to guess and raises. Store and compute in **UTC-aware** datetimes and convert only for display.
+
+#### What does this print?
+```python
+from collections import Counter
+print(Counter("abracadabra").most_common(1))
+```
+- *[('a', 5)]
+- ['a']
+- {'a': 5}
+- [('b', 2)]
+> `Counter` tallies any iterable, and `most_common(n)` returns `(item, count)` pairs sorted by frequency. Five `a`s in `abracadabra`.
 
 **Misconceptions.**
 - "You need `pandas` to count things." `Counter` and `defaultdict` cover a great deal.
@@ -625,6 +1427,62 @@ Beyond iteration, generators underpin coroutines: `async def` is built on the sa
 **Practice.**
 Build a three-stage generator pipeline over a large log file — parse, filter errors, extract fields — and confirm memory stays flat with `tracemalloc`. Then hit the double-consumption bug deliberately and fix it.
 
+**Quiz.**
+
+#### What does this print?
+```python
+def gen():
+    print("starting")
+    yield 1
+
+g = gen()
+print("created")
+next(g)
+```
+- starting then created
+- *created then starting
+- starting only
+- created only
+> Calling a generator function runs **none** of its body — it just builds the generator object. The body starts on the first `next()`.
+
+#### What does this print?
+```python
+def outer():
+    yield from [1, 2]
+    yield 3
+
+print(list(outer()))
+```
+- [[1, 2], 3]
+- *[1, 2, 3]
+- [1, 2]
+- [3]
+> `yield from` delegates to the sub-iterable, yielding its items one by one rather than yielding the container itself.
+
+#### Why does this raise?
+```python
+g = (x for x in range(3))
+print(len(g))
+```
+- It does not raise
+- *TypeError — a generator has no __len__
+- ValueError
+- StopIteration
+> A generator does not know how many values it will produce without running to the end — and running it would consume it. So there is no `len()`; use `sum(1 for _ in g)` if you accept the cost.
+
+#### What is the memory profile of this pipeline over a 50 GB log?
+```python
+lines = (l for l in open("app.log"))
+errors = (l for l in lines if "ERROR" in l)
+fields = (l.split() for l in errors)
+print(sum(1 for _ in fields))
+```
+- It loads the whole file
+- *Roughly one line at a time
+- It loads all matching errors
+- It fails on files over 2 GB
+> Each stage pulls one item from the one before, so exactly one line is in flight at any moment. Memory stays flat no matter how large the input grows.
+
 **Misconceptions.**
 - "A generator runs when called." It runs on first `next()`.
 - "Generators are just lazy lists." They cannot be indexed, re-iterated or measured with `len()`.
@@ -658,6 +1516,54 @@ Decorators are how `@property`, `@staticmethod`, `@lru_cache`, `@dataclass` and 
 
 **Practice.**
 Write `@retry(times=3, delay=0.5)` with correct `wraps`, preserving the signature. Then write a timing decorator and stack them, confirming the order in which they apply.
+
+**Quiz.**
+
+#### What does `@log` do to `greet`?
+```python
+@log
+def greet(): ...
+```
+- Calls log() once at import
+- *It is shorthand for greet = log(greet)
+- Registers greet in a global list
+- Nothing until greet is called
+> Decoration is plain function application at **definition** time: the name ends up bound to whatever the decorator returned, usually a wrapper.
+
+#### What does this print?
+```python
+fns = [lambda: i for i in range(3)]
+print([f() for f in fns])
+```
+- [0, 1, 2]
+- *[2, 2, 2]
+- [3, 3, 3]
+- [0, 0, 0]
+> Closures capture the **variable**, not its value. By the time any lambda runs, `i` is 2. Snapshot it with a default argument: `lambda i=i: i`.
+
+#### What breaks without `functools.wraps`?
+```python
+def log(fn):
+    def wrapper(*a, **k):
+        return fn(*a, **k)
+    return wrapper
+```
+- Nothing — it is cosmetic
+- *The decorated function reports the wrapper's __name__ and loses its docstring
+- The decorator stops working
+- Arguments are dropped
+> Every tool that introspects the function — help(), documentation generators, some frameworks' routing — now sees `wrapper` instead. `@wraps(fn)` copies the identity across.
+
+#### How many nested functions does a decorator that takes arguments need?
+```python
+@retry(times=3)
+def fetch(): ...
+```
+- One
+- Two
+- *Three
+- Four
+> `retry(times=3)` must return a decorator, which returns a wrapper — so: the factory, the decorator, the wrapper. That extra layer is what the arguments buy.
 
 **Misconceptions.**
 - "Decorators run at call time." The decoration happens at definition; the wrapper runs at call.
@@ -697,6 +1603,52 @@ Python 3.13 ships an experimental free-threaded build without the GIL. It is not
 **Practice.**
 Take a script fetching 100 URLs serially and rewrite it three ways: thread pool, asyncio with `gather`, and process pool. Time all four. Explain why the process pool is slowest here and would be fastest for hashing those payloads.
 
+**Quiz.**
+
+#### How fast is a CPU-bound task across 4 threads in CPython?
+```python
+with ThreadPoolExecutor(4) as ex:
+    ex.map(hash_big_file, files)
+```
+- About 4x faster
+- *About the same or slightly slower
+- Exactly 2x faster
+- It deadlocks
+> The **GIL** allows one thread to execute Python bytecode at a time, so CPU work is serialised and you only add switching overhead. Use processes for this.
+
+#### What does this do to the event loop?
+```python
+async def handler():
+    time.sleep(5)
+    return "done"
+```
+- Suspends only this coroutine
+- *Blocks the entire loop for 5 seconds
+- Raises immediately
+- Runs it on another thread
+> There is **one thread**. A blocking call does not yield to the loop, so every other coroutine is frozen. Use `await asyncio.sleep(5)`, or push blocking work to an executor.
+
+#### Which model fits 500 concurrent HTTP requests?
+```python
+# 500 outbound API calls, mostly waiting on the network
+```
+- multiprocessing
+- *asyncio or a thread pool — the GIL is released during I/O
+- A plain serial loop
+- Threads will not help at all
+> This is I/O-bound: the GIL is released while waiting on a socket, so threads genuinely overlap. asyncio scales further because it needs no thread per connection.
+
+#### What does `multiprocessing` cost that threading does not?
+```python
+with ProcessPoolExecutor() as ex:
+    ex.map(work, items)
+```
+- Nothing, it is strictly better
+- *Process startup and pickling everything across the boundary
+- It cannot return values
+- It only works on Linux
+> Separate interpreters mean real parallelism, but arguments and results must be serialised and copied, and each process takes real time to start. Worth it for CPU work, wasteful for a fast function.
+
 **Misconceptions.**
 - "Threads make Python parallel." Not for CPU work, because of the GIL.
 - "asyncio is faster than threads." It scales further for I/O; it is not inherently faster, and it is worse for CPU work.
@@ -733,6 +1685,53 @@ Around tests sit the rest: **ruff** (linting and formatting, fast, replaces flak
 
 **Practice.**
 Take an untested module to meaningful coverage with parametrised tests. Add a fixture with teardown, mock exactly one external call, and wire ruff + mypy + pytest into pre-commit and CI.
+
+**Quiz.**
+
+#### What does 100% line coverage prove?
+```python
+def test_it():
+    calculate(2, 3)   # no assert
+```
+- The code is correct
+- *Only that every line executed — this test asserts nothing
+- There are no bugs
+- Every branch was checked
+> Coverage measures **execution**, not verification. A test with no assertion can carry a line to 100% while proving nothing at all. Treat it as a map of untested areas, not a target.
+
+#### What does this give you over a loop inside one test?
+```python
+@pytest.mark.parametrize("a,b,want", [(1,1,2), (2,2,4)])
+def test_add(a, b, want):
+    assert add(a, b) == want
+```
+- Nothing, it is style
+- *Each case is a separate test, so you see exactly which inputs fail
+- It runs faster
+- It generates random inputs
+> A loop stops at the first failure and reports one test. Parametrising reports each case independently, so a single run tells you all of what is broken.
+
+#### What happens to this test during a harmless refactor?
+```python
+def test_saves():
+    svc.save(rec)
+    assert repo.method_calls == ["begin", "insert", "commit"]
+```
+- It keeps passing
+- *It breaks without any real defect existing
+- It catches the refactor's bug
+- It is skipped
+> It asserts on **implementation**, not behaviour. Reordering internals breaks it while the observable result is unchanged — the definition of a brittle test.
+
+#### Where does mocking belong?
+```python
+# candidates: the network, your own service layer, the clock
+```
+- Everywhere, for isolation
+- *At external boundaries — network, clock, filesystem
+- Only in integration tests
+- Never
+> Mock what you do not control and cannot make deterministic. Mocking your own code usually means the design needs a seam, and over-mocked tests end up asserting that your mocks work.
 
 **Misconceptions.**
 - "100% coverage means tested." It means executed.
@@ -772,6 +1771,53 @@ On memory: every object carries overhead — a small `int` is 28 bytes, an empty
 **Practice.**
 Profile a deliberately slow script, identify the real bottleneck, and fix it algorithmically. Record before-and-after timings. Then use `tracemalloc` to find a leak caused by an ever-growing module-level cache.
 
+**Quiz.**
+
+#### Which change usually wins by more?
+```python
+# a: replace `x in big_list` with `x in big_set`
+# b: hoist attribute lookups into locals
+```
+- b, micro-optimisation is king
+- *a, it changes the complexity class
+- They are equal
+- Neither matters
+> Going from O(n) to O(1) per lookup dwarfs constant-factor tweaks. Fix the algorithm and the data structure before touching anything else.
+
+#### What does `cProfile` tell you that `timeit` does not?
+```python
+python -m cProfile -s cumtime app.py
+```
+- Precise timing of one tiny snippet
+- *Where time goes across the whole program, per function
+- Memory usage
+- Which lines allocated
+> `cProfile` answers **where**, across a real run. `timeit` answers **how long** for one small snippet you already suspect. Use the first to find the bottleneck, the second to measure a fix.
+
+#### What does `tracemalloc` report?
+```python
+tracemalloc.start()
+...
+snapshot.statistics("lineno")
+```
+- CPU time per function
+- *Memory allocations attributed to the lines that made them
+- Call counts
+- Disk I/O
+> It attributes memory to source lines, which is how you find the ever-growing cache or the accidentally retained list behind a leak.
+
+#### Why does CPython need a cycle collector on top of reference counting?
+```python
+a = []
+a.append(a)
+del a
+```
+- It does not
+- *Because objects referring to each other never reach a refcount of zero
+- To speed up allocation
+- To handle threads
+> A self-reference keeps the count above zero forever, so refcounting alone would leak it. The generational cycle collector exists precisely to find and free those.
+
 **Misconceptions.**
 - "I know where the slow part is." Profile; you frequently do not.
 - "Micro-optimising helps." Not compared to fixing the complexity class.
@@ -809,6 +1855,51 @@ Tooling: `pip` plus `venv` is the baseline; `uv` is dramatically faster and incr
 
 **Practice.**
 Package a project with full `pyproject.toml` metadata, a console entry point, and classifiers. Build both artefacts, install the wheel into a clean venv, and confirm the command works. Publish to TestPyPI.
+
+**Quiz.**
+
+#### What is the difference between these artefacts?
+```python
+dist/mypkg-1.0-py3-none-any.whl
+dist/mypkg-1.0.tar.gz
+```
+- None, they are aliases
+- *The wheel is pre-built and installs directly; the sdist is source and needs a build step
+- The wheel is source
+- The tar.gz is Windows-only
+> A wheel unpacks straight into site-packages, which is why installs are fast and need no compiler. An sdist must be built first. Publish both.
+
+#### You published 1.2.0 with a bug. What now?
+```python
+twine upload dist/*
+```
+- Re-upload a fixed 1.2.0
+- *Publish 1.2.1 — versions on PyPI are immutable
+- Delete and re-upload the same version
+- Edit it in the web UI
+> A released version can never be replaced, because anyone who already resolved it would silently get different code. Yank it if it is dangerous, then publish a new version.
+
+#### Which dependency strategy belongs in a library?
+```python
+requests==2.31.0
+requests>=2.28,<3
+```
+- The exact pin — reproducibility
+- *The range — a pin forces conflicts on every consumer
+- Neither, omit dependencies
+- Both together
+> A library is combined with others; pinning exactly means two libraries can become uninstallable together. Applications pin, libraries declare ranges.
+
+#### What does this section create?
+```python
+[project.scripts]
+keystroke = "keystroke.cli:main"
+```
+- A module alias
+- *A console command available after install
+- A test entry point
+- A build hook
+> Entry points generate an executable on install, so `pip install keystroke` gives users a `keystroke` command that calls `main()` in that module.
 
 **Misconceptions.**
 - "`requirements.txt` is still the standard." It is for pinned application deployments, not for declaring a package.
@@ -850,6 +1941,54 @@ The `__dict__` on every instance is why arbitrary attributes work and why `__slo
 **Practice.**
 Use `dis` to compare bytecode for a comprehension versus an append loop. Build a diamond inheritance and print `__mro__`. Demonstrate interning with `is` at 256 and 257, and explain it.
 
+**Quiz.**
+
+#### What does this print?
+```python
+a = 256; b = 256
+c = 257; d = 257
+print(a is b, c is d)
+```
+- True True
+- *True False (on CPython)
+- False False
+- False True
+> CPython **interns** small integers from -5 to 256, so those share one object. 257 does not, so `is` sees two objects. Compare values with `==` — this is an implementation detail, not a rule.
+
+#### What does `super()` actually call?
+```python
+class C(A, B):
+    def run(self): super().run()
+```
+- A.run always
+- *The next class in the MRO, which may be B
+- Both A and B
+- The base object
+> `super()` walks the **method resolution order**, not a hard-coded parent. In cooperative multiple inheritance that next class can be a sibling you never named.
+
+#### What does `dis.dis` show?
+```python
+import dis
+dis.dis(lambda: 1 + 1)
+```
+- The original source
+- *CPython bytecode
+- x86 machine code
+- The AST
+> Source compiles to bytecode for the CPython VM, and `dis` disassembles it. It is the quickest way to settle an argument about what a construct actually costs.
+
+#### Which familiar features are built on descriptors?
+```python
+@property
+@classmethod
+@staticmethod
+```
+- None of them
+- *All of them — an object defining __get__ controls attribute access
+- Only property
+- Only staticmethod
+> A descriptor is any object defining `__get__` (and optionally `__set__`) on a class. Properties, methods, classmethods and staticmethods are all the same mechanism wearing different hats.
+
 **Misconceptions.**
 - "CPython is the language." It is one implementation; PyPy, MicroPython and others differ.
 - "`is` compares values." It compares identity; interning makes it look otherwise.
@@ -887,6 +2026,50 @@ Code that runs on your machine and code that runs in production differ in observ
 
 **Practice.**
 Take a script using `print` and hard-coded settings and make it production-shaped: structured logging, environment configuration validated at startup, timeouts and backoff on every outbound call, and graceful `SIGTERM` shutdown.
+
+**Quiz.**
+
+#### What can this do in production?
+```python
+resp = requests.get(url)
+```
+- Fail fast on a dead host
+- *Hang indefinitely — there is no default timeout
+- Retry automatically
+- Time out after 30 seconds
+> `requests` has **no default timeout**. A silently dropped connection can hold the call open forever, exhausting your workers. Always pass `timeout=`.
+
+#### Why is this dangerous even behind authentication?
+```python
+data = pickle.loads(payload)
+```
+- It is slow
+- *Unpickling executes arbitrary code contained in the payload
+- It loses type information
+- It is deprecated
+> `pickle` is not a data format — it is a small program that runs on load. Anything that can reach that payload can run code as your process. Use JSON for untrusted input.
+
+#### Which is safe from SQL injection?
+```python
+cur.execute(f"SELECT * FROM t WHERE id = {uid}")
+cur.execute("SELECT * FROM t WHERE id = %s", (uid,))
+```
+- The first
+- *The second — the driver parameterises the value
+- Both
+- Neither
+> Passing values separately means the database never parses them as SQL. String formatting hands the attacker your query — no amount of escaping by hand is a substitute.
+
+#### Which operation is safe to retry blindly?
+```python
+# a: POST /charges  (creates a payment)
+# b: GET /orders/42
+```
+- a
+- *b, because it is idempotent
+- Both
+- Neither
+> A read changes nothing, so retrying is free. Retrying a create can double-charge unless the endpoint is made idempotent with a key — which is why retry policy and idempotency are one decision.
 
 **Misconceptions.**
 - "`print` is fine, I redirect it." You lose levels, timestamps, structure and routing.

@@ -3,12 +3,12 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowLeft, ArrowRight, BookOpen, Check, CircleHelp, Flag, HelpCircle, MessageCircleQuestion,
-  PartyPopper, Send, Wrench,
+  PartyPopper, Send, Wrench, X,
 } from 'lucide-react';
 import Button from '../../components/ui/Button.jsx';
 import { Card, Chip, ProgressBar, Skeleton } from '../../components/ui/Primitives.jsx';
 import Confetti from '../../components/ui/Confetti.jsx';
-import Markdown from '../../components/ui/Markdown.jsx';
+import Markdown, { CodeBlock } from '../../components/ui/Markdown.jsx';
 import { useStore } from '../../lib/store.jsx';
 import { LEVEL_STYLE, moduleMinutes, modulesFor, pathFor } from '../../lib/curriculum.js';
 import { LANGUAGE_BY_ID } from '../../lib/content.js';
@@ -139,20 +139,7 @@ export default function LessonView() {
               ) : null}
 
               {step === 'practice' ? (
-                <Card className="p-2.5 sm:p-3">
-                  <p className="eyebrow">Practice task</p>
-                  <h2 className="mt-0.5 text-xl font-extrabold">Build it yourself</h2>
-                  <div className="mt-1.5 rounded-md border border-line bg-subtle/50 p-2">
-                    <Markdown text={capitalise(mod.practice)} language={language.prism} className="text-base" />
-                  </div>
-                  <p className="mt-1.5 text-xs leading-relaxed text-ink-3">
-                    Write this in your own editor with the real toolchain. Typing drills build the muscle; this builds
-                    the understanding. Come back and run the self-check when it works.
-                  </p>
-                  <Button variant="primary" iconRight={ArrowRight} className="mt-2.5" onClick={() => setStep('check')}>
-                    Run the self-check
-                  </Button>
-                </Card>
+                <PracticeStep mod={mod} language={language} onDone={() => setStep('check')} />
               ) : null}
 
               {step === 'check' ? (
@@ -180,6 +167,183 @@ export default function LessonView() {
         <TutorPanel mod={mod} languageName={language.name} />
       </div>
     </div>
+  );
+}
+
+/* ── Practice ──────────────────────────────────────────────────────────────
+   Two halves. The quiz is graded and immediate — you find out at once whether
+   your model of the language matches what Python actually does, which is the
+   whole point of an output-prediction question. The build task below it is the
+   slow half, done in a real editor. */
+
+function PracticeStep({ mod, language, onDone }) {
+  const quiz = mod.quiz ?? [];
+
+  return (
+    <div className="space-y-2.5">
+      {quiz.length ? <Quiz items={quiz} language={language} /> : null}
+
+      <Card className="p-2.5 sm:p-3">
+        <p className="eyebrow">Practice task</p>
+        <h2 className="mt-0.5 text-xl font-extrabold">Build it yourself</h2>
+        <div className="mt-1.5 rounded-md border border-line bg-subtle/50 p-2">
+          <Markdown text={capitalise(mod.practice)} language={language.prism} className="text-base" />
+        </div>
+        <p className="mt-1.5 text-xs leading-relaxed text-ink-3">
+          Write this in your own editor with the real toolchain. Typing drills build the muscle; this builds the
+          understanding. Come back and run the self-check when it works.
+        </p>
+        <Button variant="primary" iconRight={ArrowRight} className="mt-2.5" onClick={onDone}>
+          Run the self-check
+        </Button>
+      </Card>
+    </div>
+  );
+}
+
+/**
+ * Graded multiple choice.
+ *
+ * Answers are revealed the moment one is picked rather than at the end. For an
+ * output-prediction question the useful feedback is "you thought it printed
+ * [1,2] — here is why it prints [1,2,3]", and delivering that ten questions
+ * later, out of context, is worth far less.
+ *
+ * Choosing is final for that question. Letting someone cycle options until the
+ * green one appears turns a test of understanding into a clicking exercise.
+ */
+function Quiz({ items, language }) {
+  const [picked, setPicked] = useState({});
+
+  const answered = Object.keys(picked).length;
+  const correct = items.filter((q, i) => picked[i] === q.answer).length;
+  const done = answered === items.length;
+
+  return (
+    <Card className="p-2.5 sm:p-3">
+      <div className="flex flex-wrap items-center justify-between gap-1">
+        <div>
+          <p className="eyebrow">Check your understanding</p>
+          <h2 className="mt-0.5 text-xl font-extrabold">
+            {items.length} questions · pick one answer
+          </h2>
+        </div>
+        <span className="font-mono text-sm text-ink-3 tnum">
+          {correct}/{items.length}
+        </span>
+      </div>
+
+      <ProgressBar value={answered / items.length} className="mt-1.5" label="Quiz progress" />
+
+      <ol className="mt-2 space-y-2.5">
+        {items.map((q, qi) => {
+          const choice = picked[qi];
+          const settled = choice !== undefined;
+
+          return (
+            <li key={qi} className="rounded-md border border-line p-2">
+              <div className="flex gap-1.5">
+                <span className="mt-px grid h-[20px] w-[20px] shrink-0 place-items-center rounded-full bg-subtle font-mono text-2xs font-bold text-ink-2">
+                  {qi + 1}
+                </span>
+                <Markdown text={q.prompt} language={language.prism} compact className="min-w-0 flex-1 text-sm" />
+              </div>
+
+              {q.code ? (
+                <CodeBlock code={q.code} language={q.lang || language.prism} className="mt-1.5" />
+              ) : null}
+
+              <div className="mt-1.5 grid gap-1 sm:grid-cols-2">
+                {q.options.map((opt, oi) => {
+                  const isAnswer = oi === q.answer;
+                  const isPick = choice === oi;
+                  return (
+                    <button
+                      key={oi}
+                      type="button"
+                      disabled={settled}
+                      onClick={() => setPicked((p) => ({ ...p, [qi]: oi }))}
+                      className={cx(
+                        'flex items-start gap-1 rounded-md border px-1.5 py-1 text-left transition-colors',
+                        !settled && 'border-line hover:border-line-strong hover:bg-subtle',
+                        // After answering, the right answer is always marked —
+                        // being told only "wrong" leaves you no better informed.
+                        settled && isAnswer && 'border-good bg-good/10',
+                        settled && isPick && !isAnswer && 'border-bad bg-bad/10',
+                        settled && !isAnswer && !isPick && 'border-line opacity-50',
+                      )}
+                    >
+                      <span
+                        className={cx(
+                          'mt-px grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full border font-mono text-2xs font-bold',
+                          settled && isAnswer && 'border-good bg-good text-white',
+                          settled && isPick && !isAnswer && 'border-bad bg-bad text-white',
+                          (!settled || (!isAnswer && !isPick)) && 'border-line text-ink-3',
+                        )}
+                        aria-hidden
+                      >
+                        {settled && isAnswer ? (
+                          <Check size={11} strokeWidth={3} />
+                        ) : settled && isPick ? (
+                          <X size={11} strokeWidth={3} />
+                        ) : (
+                          'ABCD'[oi]
+                        )}
+                      </span>
+                      <span className="min-w-0 flex-1 font-mono text-xs leading-relaxed">{opt}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <AnimatePresence>
+                {settled ? (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div
+                      className={cx(
+                        'mt-1.5 rounded-md border px-1.5 py-1',
+                        choice === q.answer ? 'border-good/40 bg-good/5' : 'border-warn/40 bg-warn/5',
+                      )}
+                    >
+                      <p className="text-2xs font-extrabold uppercase tracking-[0.08em] text-ink-3">
+                        {choice === q.answer ? 'Correct' : 'Not quite'}
+                      </p>
+                      <Markdown text={q.explain} language={language.prism} compact className="mt-0.5 text-xs" />
+                    </div>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+            </li>
+          );
+        })}
+      </ol>
+
+      {done ? (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={cx(
+            'mt-2 flex flex-wrap items-center gap-1.5 rounded-md border px-2 py-1.5',
+            correct === items.length ? 'border-good/50 bg-good/10' : 'border-line bg-subtle/50',
+          )}
+        >
+          <p className="text-sm font-extrabold">
+            {correct} of {items.length} correct
+            {correct === items.length ? ' — all of them.' : '.'}
+          </p>
+          {correct < items.length ? (
+            <Button size="sm" variant="ghost" onClick={() => setPicked({})}>
+              Try again
+            </Button>
+          ) : null}
+        </motion.div>
+      ) : null}
+    </Card>
   );
 }
 
