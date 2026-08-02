@@ -147,7 +147,11 @@ export default function Achievements() {
             <ol className="mt-1.5 divide-y divide-line">
               {leaderboard.map((row, i) => (
                 <li
-                  key={row.name}
+                  // Names are not unique — the live board already has two
+                  // different players called "Meow". A name-only key makes
+                  // React reconcile the wrong rows, which can move the "you"
+                  // highlight onto a stranger.
+                  key={`${i}-${row.name}-${row.xp}`}
                   className={cx(
                     'flex items-center gap-1.5 py-1',
                     row.you && '-mx-1 rounded-sm bg-brand-wash px-1',
