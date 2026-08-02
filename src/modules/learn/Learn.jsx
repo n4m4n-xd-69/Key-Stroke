@@ -10,6 +10,7 @@ import {
   LEVEL_STYLE, PATH_LANGUAGES, curriculumTotals, isUnlocked, levelProgress,
   moduleMinutes, modulesFor, pathFor, trackProgress,
 } from '../../lib/curriculum.js';
+import BetaBanner from './BetaBanner.jsx';
 import { cx } from '../../lib/format.js';
 
 export default function Learn() {
@@ -34,6 +35,8 @@ function LanguageGrid() {
 
   return (
     <div className="space-y-3">
+      <BetaBanner />
+
       <header className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <p className="eyebrow">Module 03</p>

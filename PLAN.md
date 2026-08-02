@@ -203,24 +203,24 @@ starter prompts, regenerate, edit-and-resend, copy, scroll anchoring, transcript
 persistence, and a system prompt already fed the learner's WPM / accuracy / level
 / streak / weak keys. It needs a route and four upgrades.
 
-### 4.1 Wire it `[ ]` S
+### 4.1 Wire it `[x]` S
 - [ ] Route `/chat` in `App.jsx`
 - [ ] Left-rail nav entry with a `MessageSquare` icon
 - **Note:** this answers "check if already exists or no, if yes modify it" — it exists.
 
-### 4.2 Grok/ChatGPT-grade UI `[ ]` M
+### 4.2 Grok/ChatGPT-grade UI `[x]` M
 - [ ] Thread sidebar: new chat, rename, delete, search
 - [ ] Sticky composer, auto-grow, attach-code affordance
 - [ ] Message actions on hover; collapsible "thought for Ns" block
 - [ ] Full-bleed layout that owns the viewport
 
-### 4.3 Level-aware preloaded suggestions `[ ]` M
+### 4.3 Level-aware preloaded suggestions `[x]` M
 - [ ] Replace the fixed `STARTERS` array with suggestions keyed off level band,
       weakest keys, current language and recent accuracy trend
 - [ ] Refresh them when level or streak changes
 - **Fixes your report:** "some pre loaded suggestions, updates as per level increase"
 
-### 4.4 Persist to database `[ ]` M
+### 4.4 Persist to database `[x]` M
 - [ ] Swap the `localStorage` transcript for `chat_messages`
 - [ ] Keep localStorage as the offline cache; reconcile on reconnect
 - **Fixes your report:** "it should sink with database"
@@ -254,11 +254,11 @@ Today the rail is `AISidebar` — static tabbed analysis. You want a conversatio
 
 ## Phase 6 — Learn beta vote (M)
 
-### 6.1 Banner `[ ]` S
+### 6.1 Banner `[x]` S
 - [ ] Header on `/learn`: "Learn is in beta — do you want it? Yes / No"
 - [ ] Dismissible; remembers the vote; one vote per user
 
-### 6.2 Tally `[ ]` M
+### 6.2 Tally `[x]` M
 - [ ] Write to `beta_votes`, read `beta_vote_tally`
 - [ ] Show live yes/no split and total
 - [ ] Anonymous users vote too (Phase 3.3)
@@ -272,7 +272,7 @@ Today the rail is `AISidebar` — static tabbed analysis. You want a conversatio
 
 ## Phase 7 — Analysis / heatmap (M)
 
-### 7.1 Month report `[ ]` M
+### 7.1 Month report `[x]` M
 `Charts.jsx:Heatmap` is hardcoded to `weeks = 18` — a rolling 18-week grid.
 
 - [ ] Rewrite as a calendar-month grid with weekday columns

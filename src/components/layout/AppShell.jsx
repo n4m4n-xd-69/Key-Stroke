@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   BadgeInfo, Braces, ChevronRight, Command, Flame, GraduationCap, Home, Keyboard,
-  LineChart, Trophy,
+  LineChart, MessageSquare, Trophy,
 } from 'lucide-react';
 import { cx, initials } from '../../lib/format.js';
 import { useStats, useStore } from '../../lib/store.jsx';
@@ -25,6 +25,7 @@ export const NAV_GROUPS = [
       { to: '/practice', label: 'Typing', icon: Keyboard },
       { to: '/code', label: 'Code', icon: Braces },
       { to: '/learn', label: 'Learn', icon: GraduationCap },
+      { to: '/chat', label: 'Chat', icon: MessageSquare },
     ],
   },
   {

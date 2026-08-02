@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, PolarAngleAxis, PolarGrid,
   PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTheme } from '../../lib/theme.jsx';
 import { chartTokens } from './palette.js';
 import { TooltipCard } from './ChartFrame.jsx';
@@ -147,69 +148,145 @@ export function SkillRadar({ data }) {
 /* ── Practice heatmap ──────────────────────────────────────────────────── */
 
 /**
- * 12 weeks × 7 days. Cells are separated by a 2px surface gap so adjacent
- * levels never bleed into one another, and each carries a title for hover.
+ * One calendar month at a time, navigable backwards.
+ *
+ * This replaced a rolling 18-week strip. That view could show a whole season at
+ * once, but it could not answer "how did June go" — the columns were unlabelled
+ * week boundaries with no month anywhere, so any question about a specific
+ * period meant counting squares backwards from today.
  */
-export function Heatmap({ days, weeks = 18 }) {
+export function Heatmap({ days }) {
   const { isDark } = useTheme();
   const t = chartTokens(isDark);
 
-  const grid = useMemo(() => {
-    const out = [];
+  /**
+   * Which month to open on.
+   *
+   * "Show last month if it has anything, otherwise this month." Someone opening
+   * the dashboard on the 2nd wants to see the month they actually practised,
+   * not two lonely squares — but a blank previous month would be worse than
+   * either, so it only wins when it holds something.
+   */
+  const [offset, setOffset] = useState(() => {
+    const now = new Date();
+    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prefix = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}-`;
+    const prevHasData = Object.entries(days ?? {}).some(([k, v]) => k.startsWith(prefix) && (v?.seconds ?? 0) > 0);
+    return prevHasData ? -1 : 0;
+  });
+
+  const { cells, label, total, active, isCurrent, hasEarlier } = useMemo(() => {
+    const now = new Date();
+    const first = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+    const year = first.getFullYear();
+    const month = first.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
     const today = new Date();
-    today.setHours(23, 59, 59, 999); // so "is this cell in the future" is a whole-day test
+    today.setHours(23, 59, 59, 999);
 
-    // The last column must be the *current* week, otherwise today's practice
-    // never appears. The previous offset landed the final cell on the Sunday
-    // before today, so the grid was always one partial week behind and the
-    // active day was permanently invisible.
-    const start = new Date(today);
-    start.setHours(0, 0, 0, 0);
-    start.setDate(start.getDate() - (weeks - 1) * 7 - start.getDay());
+    const out = [];
+    // Lead-in blanks so the 1st lands under its real weekday column.
+    for (let i = 0; i < first.getDay(); i++) out.push(null);
 
-    for (let w = 0; w < weeks; w++) {
-      const col = [];
-      for (let d = 0; d < 7; d++) {
-        const date = new Date(start);
-        date.setDate(start.getDate() + w * 7 + d);
-        const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-        const entry = days[key];
-        const minutes = Math.round((entry?.seconds ?? 0) / 60);
-        col.push({ key, date, minutes, future: date > today });
-      }
-      out.push(col);
+    let seconds = 0;
+    let activeDays = 0;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = new Date(year, month, d);
+      const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const secs = days?.[key]?.seconds ?? 0;
+      seconds += secs;
+      // Counted in seconds, not rounded minutes: a 40-second drill is a day you
+      // practised, and rounding it to 0 made the day vanish from both the
+      // square and the "N days" summary.
+      if (secs > 0) activeDays += 1;
+      out.push({ key, date, day: d, seconds: secs, minutes: Math.round(secs / 60), future: date > today });
     }
-    return out;
-  }, [days, weeks]);
 
-  const level = (minutes) => (minutes === 0 ? -1 : minutes < 5 ? 0 : minutes < 12 ? 1 : minutes < 25 ? 2 : 3);
+    // Is there any recorded day before this month? Drives the back arrow.
+    const monthStart = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const earlier = Object.keys(days ?? {}).some((k) => k < monthStart);
+
+    return {
+      cells: out,
+      label: first.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
+      total: Math.round(seconds / 60),
+      active: activeDays,
+      isCurrent: offset >= 0,
+      hasEarlier: earlier,
+    };
+  }, [days, offset]);
+
+  // Keyed off seconds so any practice at all lights the square; the bands
+  // above the first are still minute-scaled.
+  const level = (secs) => {
+    if (!secs) return -1;
+    const m = secs / 60;
+    return m < 5 ? 0 : m < 12 ? 1 : m < 25 ? 2 : 3;
+  };
 
   return (
-    <div>
-      <div className="flex gap-[3px] overflow-x-auto no-scrollbar pb-0.5">
-        {grid.map((col, i) => (
-          <div key={i} className="flex flex-col gap-[3px]">
-            {col.map((cell) => {
-              const l = level(cell.minutes);
-              return (
-                <div
-                  key={cell.key}
-                  title={
-                    cell.future
-                      ? ''
-                      : `${cell.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} — ${cell.minutes} min`
-                  }
-                  className={cx(
-                    'h-[12px] w-[12px] rounded-[3px] transition-transform duration-150 hover:scale-125',
-                    cell.future && 'opacity-0',
-                  )}
-                  style={{ background: l < 0 ? t.heat.empty : t.heat.steps[l] }}
-                />
-              );
-            })}
-          </div>
-        ))}
+    // Capped rather than full-bleed: seven aspect-square columns across a full
+    // card width give ~170px cells, which reads as a table of empty boxes
+    // rather than a calendar.
+    <div className="mx-auto w-full max-w-[380px]">
+      <div className="mb-1.5 flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => setOffset((o) => o - 1)}
+          disabled={!hasEarlier && offset <= -1}
+          aria-label="Previous month"
+          className="grid h-[26px] w-[26px] place-items-center rounded-md text-ink-3 transition-colors hover:bg-subtle hover:text-ink disabled:pointer-events-none disabled:opacity-30"
+        >
+          <ChevronLeft size={15} strokeWidth={2.4} aria-hidden />
+        </button>
+        <p className="text-sm font-extrabold tabular-nums">{label}</p>
+        <button
+          type="button"
+          onClick={() => setOffset((o) => Math.min(0, o + 1))}
+          disabled={isCurrent}
+          aria-label="Next month"
+          className="grid h-[26px] w-[26px] place-items-center rounded-md text-ink-3 transition-colors hover:bg-subtle hover:text-ink disabled:pointer-events-none disabled:opacity-30"
+        >
+          <ChevronRight size={15} strokeWidth={2.4} aria-hidden />
+        </button>
+        <p className="ml-auto text-2xs font-bold uppercase tracking-[0.07em] text-ink-3">
+          {total} min · {active} {active === 1 ? 'day' : 'days'}
+        </p>
       </div>
+
+      <div className="grid grid-cols-7 gap-[3px]" role="grid" aria-label={`Practice in ${label}`}>
+        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+          <span key={i} className="pb-0.5 text-center text-2xs font-bold text-ink-3" aria-hidden>
+            {d}
+          </span>
+        ))}
+        {cells.map((cell, i) =>
+          cell === null ? (
+            <span key={`pad-${i}`} aria-hidden />
+          ) : (
+            <div
+              key={cell.key}
+              title={
+                cell.future
+                  ? ''
+                  : `${cell.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} — ${
+                      cell.seconds > 0 && cell.minutes === 0 ? '<1' : cell.minutes
+                    } min`
+              }
+              className={cx(
+                'grid aspect-square place-items-center rounded-[5px] text-2xs font-bold tabular-nums transition-transform duration-150',
+                cell.future ? 'opacity-25' : 'hover:scale-[1.08]',
+                cell.seconds > 0 ? 'text-brand-ink' : 'text-ink-3',
+              )}
+              style={{ background: level(cell.seconds) < 0 ? t.heat.empty : t.heat.steps[level(cell.seconds)] }}
+            >
+              {cell.day}
+            </div>
+          ),
+        )}
+      </div>
+
       <div className="mt-1.5 flex items-center gap-0.5 text-2xs font-bold uppercase tracking-[0.08em] text-ink-3">
         <span>Less</span>
         <span className="h-[10px] w-[10px] rounded-[3px]" style={{ background: t.heat.empty }} />
@@ -221,8 +298,6 @@ export function Heatmap({ days, weeks = 18 }) {
     </div>
   );
 }
-
-/* ── Sparkline ─────────────────────────────────────────────────────────── */
 
 export function Sparkline({ values, width = 84, height = 26, color }) {
   const { isDark } = useTheme();

@@ -170,7 +170,7 @@ export default function Dashboard() {
       </div>
 
       <Card className="p-2.5">
-        <ChartFrame title="Practice footprint" hint="Every day of the last 18 weeks" height="auto">
+        <ChartFrame title="Practice footprint" hint="A month at a time — use the arrows to look back" height="auto">
           <Heatmap days={state.daily} />
         </ChartFrame>
       </Card>

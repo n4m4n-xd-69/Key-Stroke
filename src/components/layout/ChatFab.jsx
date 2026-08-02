@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Cat, Send, Sparkles, Square, X } from 'lucide-react';
 import Button from '../ui/Button.jsx';
@@ -26,6 +27,7 @@ export default function ChatFab() {
   const ready = aiConfigured();
   const stats = useStats();
   const { state } = useStore();
+  const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const scrollRef = useRef(null);
@@ -73,6 +75,9 @@ export default function ChatFab() {
   useEffect(() => {
     if (open) panelRef.current?.querySelector('input')?.focus();
   }, [open]);
+
+  /* Redundant on /chat, and its send button sits exactly where the FAB does. */
+  if (pathname.startsWith('/chat')) return null;
 
   const starters = [
     stats.sessionCount === 0
