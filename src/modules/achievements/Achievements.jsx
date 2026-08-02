@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -11,7 +11,8 @@ import { Card, Chip, ProgressRing, SectionTitle } from '../../components/ui/Prim
 import MissionStrip from '../../components/gamify/MissionStrip.jsx';
 import { useStats, useStore } from '../../lib/store.jsx';
 import { ACHIEVEMENTS, LEVEL_TITLES, TIER_STYLES, levelTitle, xpForLevel } from '../../lib/gamification.js';
-import { cx, initials, seeded } from '../../lib/format.js';
+import { cx, initials } from '../../lib/format.js';
+import { supabase } from '../../lib/supabase.js';
 
 /* Explicit map rather than `import * as Icons` — a namespace import of
    lucide-react drags every icon in the library into this chunk. */
@@ -20,8 +21,56 @@ const BADGE_ICONS = {
   Moon, Rocket, Sparkles, Target, Timer, Trophy, Wind, Zap,
 };
 
-/** Demo rivals so the leaderboard is legible before friends exist. */
-const RIVALS = ['Ada L.', 'Grace H.', 'Linus T.', 'Margaret H.', 'Ken T.', 'Barbara L.'];
+/**
+ * The live board, with you folded in.
+ *
+ * Reads `public.leaderboard` — a view carrying a display name and an XP total
+ * and nothing else, so ranking never requires exposing a profile.
+ *
+ * Your own row comes from local state rather than the view, because the view
+ * only sees what has been synced. Between finishing a run and the two-second
+ * push landing, the server's copy is stale by exactly one session; taking the
+ * local figure means your XP moves the instant you earn it, which is what the
+ * page is for. The remote copy of you is dropped so you never appear twice.
+ *
+ * Falls back to a board of one — you — when signed out or unconfigured, rather
+ * than inventing rivals. A fake ranking is worse than an honest empty one.
+ */
+function useLeaderboard(name, xp) {
+  const [remote, setRemote] = useState(null);
+
+  useEffect(() => {
+    if (!supabase) return undefined;
+    let cancelled = false;
+    supabase
+      .from('leaderboard')
+      .select('display_name, xp')
+      .order('xp', { ascending: false })
+      .limit(25)
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          console.warn('[leaderboard] unavailable:', error.message);
+          setRemote([]);
+          return;
+        }
+        setRemote(data ?? []);
+      });
+    return () => { cancelled = true; };
+  }, [xp]); // refetch once your own total moves, so the board stays current
+
+  return useMemo(() => {
+    const you = { name: name || 'You', xp, you: true };
+    const others = (remote ?? [])
+      .filter((r) => r.display_name && r.display_name !== you.name)
+      .map((r) => ({ name: r.display_name, xp: r.xp ?? 0, you: false }));
+
+    return {
+      live: Boolean(supabase) && others.length > 0,
+      rows: [...others, you].sort((a, b) => b.xp - a.xp).slice(0, 10),
+    };
+  }, [remote, name, xp]);
+}
 
 export default function Achievements() {
   const stats = useStats();
@@ -30,15 +79,7 @@ export default function Achievements() {
   const unlocked = ACHIEVEMENTS.filter((a) => state.achievements[a.id]);
   const locked = ACHIEVEMENTS.filter((a) => !state.achievements[a.id]);
 
-  const leaderboard = useMemo(() => {
-    const rows = RIVALS.map((name) => ({
-      name,
-      you: false,
-      xp: Math.round(400 + seeded(name) * 5200),
-    }));
-    rows.push({ name: state.profile.name || 'You', you: true, xp: stats.xp });
-    return rows.sort((a, b) => b.xp - a.xp);
-  }, [state.profile.name, stats.xp]);
+  const { rows: leaderboard, live } = useLeaderboard(state.profile.name, stats.xp);
 
   return (
     <div className="space-y-3">
@@ -101,7 +142,7 @@ export default function Achievements() {
           <Card className="p-2.5">
             <SectionTitle
               title="Leaderboard"
-              hint="Weekly XP — the rivals are demo data until friends are connected"
+              hint={live ? 'Total XP · everyone playing, updated as you earn' : 'Sign in to appear on the live board'}
             />
             <ol className="mt-1.5 divide-y divide-line">
               {leaderboard.map((row, i) => (

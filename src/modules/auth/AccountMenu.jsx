@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { LogIn, LogOut, ShieldCheck } from 'lucide-react';
+import { LogIn, LogOut, Pencil, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../lib/auth.jsx';
+import { useStore } from '../../lib/store.jsx';
+import Modal from '../../components/ui/Modal.jsx';
+import Button from '../../components/ui/Button.jsx';
+import { supabase } from '../../lib/supabase.js';
 import { isGuest } from '../../lib/supabase.js';
 import { useToast } from '../../components/ui/Toast.jsx';
 import { cx } from '../../lib/format.js';
@@ -22,8 +26,10 @@ import { fetchMyRole } from '../admin/adminApi.js';
  */
 export default function AccountMenu() {
   const { user, cloudEnabled, openAuthModal, signOut } = useAuth();
+  const { state } = useStore();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  const [renaming, setRenaming] = useState(false);
   const [role, setRole] = useState('user');
   const ref = useRef(null);
 
@@ -62,20 +68,49 @@ export default function AccountMenu() {
     };
   }, [user]);
 
-  if (!cloudEnabled) return null;
-
-  if (!user) {
+  /* Renders even with no cloud configured. It used to return null, which meant
+     a local-only build had no way to change the name you typed at onboarding
+     and no account surface at all — the name was effectively write-once. */
+  if (!cloudEnabled && !user) {
     return (
-      <button
-        onClick={() => openAuthModal('sign-in')}
-        className="hidden h-[36px] shrink-0 items-center gap-0.5 rounded-full border border-line px-1.5 text-xs font-bold text-ink-2 transition-colors hover:bg-subtle hover:text-ink sm:flex"
-      >
-        <LogIn size={14} strokeWidth={2.2} aria-hidden /> Sign in
-      </button>
+      <>
+        <button
+          onClick={() => setRenaming(true)}
+          title="Your name"
+          className="hidden h-[36px] shrink-0 items-center gap-0.5 rounded-full border border-line px-1.5 text-xs font-bold text-ink-2 transition-colors hover:bg-subtle hover:text-ink sm:flex"
+        >
+          <Pencil size={13} strokeWidth={2.2} aria-hidden />
+          {state.profile.name || 'Set your name'}
+        </button>
+        <RenameModal open={renaming} onClose={() => setRenaming(false)} />
+      </>
     );
   }
 
-  const displayName = user.user_metadata?.full_name?.trim();
+  if (!user) {
+    return (
+      <>
+        <button
+          onClick={() => setRenaming(true)}
+          title="Change your name"
+          aria-label="Change your name"
+          className="hidden h-[36px] shrink-0 items-center gap-0.5 rounded-full border border-line px-1.5 text-xs font-bold text-ink-2 transition-colors hover:bg-subtle hover:text-ink sm:flex"
+        >
+          <Pencil size={13} strokeWidth={2.2} aria-hidden />
+          {state.profile.name || 'Name'}
+        </button>
+        <button
+          onClick={() => openAuthModal('sign-in')}
+          className="hidden h-[36px] shrink-0 items-center gap-0.5 rounded-full border border-line px-1.5 text-xs font-bold text-ink-2 transition-colors hover:bg-subtle hover:text-ink sm:flex"
+        >
+          <LogIn size={14} strokeWidth={2.2} aria-hidden /> Sign in
+        </button>
+        <RenameModal open={renaming} onClose={() => setRenaming(false)} />
+      </>
+    );
+  }
+
+  const displayName = user.user_metadata?.full_name?.trim() || state.profile.name;
   const guest = isGuest(user);
   const label = displayName || user.email || (guest ? 'Guest' : 'Account');
 
@@ -127,6 +162,17 @@ export default function AccountMenu() {
               </span>
             </button>
           ) : null}
+          <button
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              setRenaming(true);
+            }}
+            className="flex w-full items-center gap-1 border-b border-line px-2 py-1.5 text-left text-sm font-semibold text-ink-2 transition-colors hover:bg-subtle hover:text-ink"
+          >
+            <Pencil size={14} strokeWidth={2.2} aria-hidden /> Change name
+          </button>
+
           {role === 'admin' ? (
             <Link
               role="menuitem"
@@ -141,8 +187,16 @@ export default function AccountMenu() {
             role="menuitem"
             onClick={async () => {
               setOpen(false);
+              // A guest account exists only in this browser's session. Signing
+              // out of one is not reversible — there is no email to sign back
+              // in with — so it needs saying before, not after.
+              if (guest && !window.confirm(
+                'This is a guest account. Signing out leaves no way back to it, '
+                  + 'and the progress synced under it cannot be recovered.\n\n'
+                  + 'Add an email first to keep it. Sign out anyway?',
+              )) return;
               await signOut();
-              toast('Signed out.', { tone: 'info' });
+              toast(guest ? 'Guest session ended.' : 'Signed out.', { tone: 'info' });
             }}
             className="flex w-full items-center gap-1 px-2 py-1.5 text-left text-sm font-semibold text-ink-2 transition-colors hover:bg-subtle hover:text-ink"
           >
@@ -150,6 +204,87 @@ export default function AccountMenu() {
           </button>
         </div>
       ) : null}
+      <RenameModal open={renaming} onClose={() => setRenaming(false)} />
     </div>
+  );
+}
+
+/**
+ * Editing the name after onboarding.
+ *
+ * There was no way to do this at all: `updateProfile` was called from exactly
+ * one place — the onboarding wizard — so whatever you typed on your first visit
+ * was permanent. It writes to three places because three of them are read:
+ * local state (what the app shows), `profiles.display_name` (what sync and the
+ * admin panel read) and `user_metadata.full_name` (what the header shows before
+ * the first sync completes). Updating one and not the others is how a rename
+ * appears to work and then reverts.
+ */
+function RenameModal({ open, onClose }) {
+  const { state, updateProfile } = useStore();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [value, setValue] = useState(state.profile.name ?? '');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (open) setValue(state.profile.name ?? '');
+  }, [open, state.profile.name]);
+
+  const save = async (e) => {
+    e.preventDefault();
+    const name = value.trim();
+    if (busy) return;
+    setBusy(true);
+    try {
+      updateProfile({ name });
+      if (user && supabase) {
+        // Metadata first: it is what the header reads immediately. The profiles
+        // row is also written by the next sync push, but doing it here means the
+        // change is durable even if the user closes the tab straight away.
+        await supabase.auth.updateUser({ data: { full_name: name } });
+        await supabase.from('profiles').upsert(
+          { id: user.id, display_name: name || null, updated_at: new Date().toISOString() },
+          { onConflict: 'id' },
+        );
+      }
+      toast(name ? `You are ${name} now.` : 'Name cleared.', { tone: 'success' });
+      onClose();
+    } catch (err) {
+      toast(err?.message || 'Could not save that name.', { tone: 'error' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Your name" size="sm">
+      <form onSubmit={save} className="px-3 py-2.5">
+        <label htmlFor="profile-name" className="text-sm font-extrabold">
+          What should we call you?
+        </label>
+        <input
+          id="profile-name"
+          data-autofocus
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          maxLength={40}
+          placeholder="Your name"
+          autoComplete="name"
+          className="mt-1 h-[44px] w-full rounded-md border border-line bg-subtle/50 px-1.5 text-base outline-none focus:border-brand"
+        />
+        <p className="mt-1 text-xs leading-relaxed text-ink-3">
+          Shown in the header and on the leaderboard. Leave it blank to stay anonymous.
+        </p>
+        <div className="mt-3 flex justify-end gap-1">
+          <Button type="button" variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="primary" disabled={busy}>
+            {busy ? 'Saving…' : 'Save'}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 }

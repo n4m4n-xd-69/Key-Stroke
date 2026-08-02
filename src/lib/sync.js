@@ -49,9 +49,30 @@ function hash32(str) {
   return (h >>> 0).toString(36);
 }
 
-/** Stable idempotency key for a session, per PRD: `${ts}-${hash(mode+wpm+chars)}`. */
+/**
+ * Stable idempotency key for a session.
+ *
+ * "Stable" has to mean *across a round trip through Postgres*, which the first
+ * version of this did not. It hashed `s.ts` and `s.wpm` as they appeared
+ * locally, but neither survives storage unchanged:
+ *
+ *   ts   local `2026-08-02T05:53:42.839Z`  ->  db `2026-08-02 05:53:42.839+00`
+ *   wpm  local `219.35483870967741`        ->  db `219.355`  (column is `real`)
+ *
+ * So a pulled session hashed to a different id than the same session had going
+ * up, the upsert's `onConflict (user_id, client_id)` never matched, and a fresh
+ * row was inserted. Every pull-then-push cycle duplicated the entire history.
+ *
+ * Normalising fixes it in both directions: the timestamp becomes epoch
+ * milliseconds, which both formats parse to identically, and WPM is quantised
+ * to one decimal as an integer — coarse enough to survive float4, fine enough
+ * that two genuinely different runs in the same millisecond still differ.
+ */
 function clientIdFor(s) {
-  return `c_${hash32(`${s.ts}|${s.mode ?? ''}|${s.wpm}|${s.chars ?? 0}`)}`;
+  const parsed = Date.parse(s.ts);
+  const ts = Number.isNaN(parsed) ? String(s.ts ?? '') : String(parsed);
+  const wpm = Math.round((Number(s.wpm) || 0) * 10);
+  return `c_${hash32(`${ts}|${s.mode ?? ''}|${wpm}|${s.chars ?? 0}`)}`;
 }
 
 function sessionToRow(userId, s) {
@@ -429,17 +450,37 @@ export function useCloudSync(user, state, dispatch) {
   stateRef.current = state;
   const adoptingRef = useRef(false);
 
+  /**
+   * Whether the initial adopt-and-pull has finished for the current user.
+   *
+   * This gates the write-through push, and it is not optional. On a device
+   * where local state is empty but the session is live — a cleared cache, a
+   * second browser, a fresh install — the push timer would fire two seconds
+   * after mount while the pull was still in flight, and upsert a blank
+   * snapshot over good remote data. That is not hypothetical: it zeroed a
+   * real account's XP from 790 to 0 during testing.
+   *
+   * Nothing is lost by waiting. The push effect re-runs on every state change,
+   * so the first genuine edit after hydration carries everything up anyway.
+   */
+  const hydratedRef = useRef(false);
+
   useEffect(() => {
     if (!user || !cloudEnabled()) return undefined;
     if (adoptingRef.current) return undefined;
     adoptingRef.current = true;
+    hydratedRef.current = false; // a new user id must hydrate before it pushes
     let cancelled = false;
     (async () => {
       try {
         if (!isAdopted(user.id)) await adoptLocalState(user.id, stateRef.current);
         if (!cancelled) await pullAndSeed(user.id, stateRef.current, dispatch);
+        if (!cancelled) hydratedRef.current = true;
       } catch (err) {
-        console.error('[sync] initial hydrate failed', err);
+        // Deliberately leaves `hydrated` false. A push after a failed pull is
+        // exactly the case that overwrites remote data with a local blank, so
+        // a device that cannot read stays read-only until it can.
+        console.error('[sync] initial hydrate failed — writes stay disabled this session', err);
       } finally {
         adoptingRef.current = false;
       }
@@ -461,6 +502,7 @@ export function useCloudSync(user, state, dispatch) {
   useEffect(() => {
     if (!user || !cloudEnabled()) return undefined;
     const timer = setTimeout(() => {
+      if (!hydratedRef.current) return; // see hydratedRef — never write before reading
       pushSnapshot(user.id, stateRef.current).catch((err) => console.error('[sync] write-through failed, will retry on next change', err));
     }, 2000);
     return () => clearTimeout(timer);
@@ -469,6 +511,7 @@ export function useCloudSync(user, state, dispatch) {
   useEffect(() => {
     if (!user || !cloudEnabled()) return undefined;
     const onOnline = () => {
+      if (!hydratedRef.current) return;
       pushSnapshot(user.id, stateRef.current).catch((err) => console.error('[sync] reconnect push failed', err));
     };
     window.addEventListener('online', onOnline);

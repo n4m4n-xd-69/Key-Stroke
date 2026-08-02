@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Braces, GraduationCap, Keyboard, Sparkles } from 'lucide-react';
+import { ArrowRight, Braces, GraduationCap, Keyboard, Mail, ShieldCheck, Sparkles } from 'lucide-react';
 import Modal from '../../components/ui/Modal.jsx';
 import Button from '../../components/ui/Button.jsx';
 import Segmented from '../../components/ui/Segmented.jsx';
 import { useStore } from '../../lib/store.jsx';
 import { useAuth } from '../../lib/auth.jsx';
-import { signInAnonymously } from '../../lib/supabase.js';
+import { signInAnonymously, signInWithGoogle } from '../../lib/supabase.js';
 import { cx } from '../../lib/format.js';
 
 const GOALS = [
@@ -27,7 +27,7 @@ const FOCUS = [
  */
 export default function Onboarding({ open, onClose, onStart }) {
   const { state, updateProfile } = useStore();
-  const { user, cloudEnabled } = useAuth();
+  const { user, cloudEnabled, openAuthModal } = useAuth();
   const [step, setStep] = useState(0);
   const [name, setName] = useState(state.profile.name);
   const [goal, setGoal] = useState(state.profile.goalMinutes ?? 15);
@@ -99,7 +99,59 @@ export default function Onboarding({ open, onClose, onStart }) {
                   placeholder="Your name"
                   className="mt-1 h-[44px] w-full rounded-md border border-line bg-subtle/50 px-1.5 text-base outline-none focus:border-brand"
                 />
-                <p className="mt-0.5 text-xs text-ink-3">Stored on this device only. Leave it blank if you'd rather not.</p>
+                <p className="mt-0.5 text-xs text-ink-3">
+                  {cloudEnabled
+                    ? 'A name is enough to start — your progress saves straight away.'
+                    : "Stored on this device only. Leave it blank if you'd rather not."}
+                </p>
+
+                {/* The honest trade-off, stated where the decision is made.
+                    A name alone creates a guest account that lives and dies
+                    with this browser; an email or Google makes it portable.
+                    Saying so here beats discovering it after a month of
+                    progress is stranded. */}
+                {cloudEnabled ? (
+                  <div className="mt-2 rounded-md border border-line bg-subtle/40 p-1.5">
+                    <p className="flex items-start gap-1 text-xs leading-relaxed text-ink-2">
+                      <ShieldCheck size={14} strokeWidth={2.2} className="mt-px shrink-0 text-brand" aria-hidden />
+                      <span>
+                        <strong className="font-extrabold text-ink">Want it on your phone too?</strong>{' '}
+                        Add an email or continue with Google, and your streak, XP and stats follow you
+                        anywhere. You can also do this later.
+                      </span>
+                    </p>
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        icon={Mail}
+                        onClick={() => {
+                          if (name.trim()) updateProfile({ name: name.trim() });
+                          onClose();
+                          openAuthModal('sign-up');
+                        }}
+                      >
+                        Add an email
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={async () => {
+                          if (name.trim()) updateProfile({ name: name.trim() });
+                          try {
+                            await signInWithGoogle();
+                          } catch {
+                            /* the modal below is the fallback route */
+                            onClose();
+                            openAuthModal('sign-up');
+                          }
+                        }}
+                      >
+                        <GoogleG /> Continue with Google
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
@@ -172,5 +224,16 @@ export default function Onboarding({ open, onClose, onStart }) {
         </footer>
       </div>
     </Modal>
+  );
+}
+
+function GoogleG() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 48 48" aria-hidden>
+      <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.1 8 3l5.7-5.7C34.6 6.1 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z" />
+      <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.1 18.9 12 24 12c3.1 0 5.9 1.1 8 3l5.7-5.7C34.6 6.1 29.6 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
+      <path fill="#4CAF50" d="M24 44c5.5 0 10.4-2.1 14.1-5.6l-6.5-5.5C29.5 34.8 26.9 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.6 5.1C9.6 39.6 16.3 44 24 44z" />
+      <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.2 4.2-4.1 5.6l6.5 5.5C39.9 37.5 44 31.8 44 24c0-1.3-.1-2.7-.4-3.5z" />
+    </svg>
   );
 }
