@@ -14,12 +14,29 @@ import { PATHS } from './paths.generated.js';
 import { LANGUAGE_BY_ID } from './content.js';
 
 /** Only these seven have an authored path; Code typing still covers all eleven. */
-export const PATH_LANGUAGE_IDS = ['c', 'cpp', 'java', 'python', 'javascript', 'typescript', 'sql'];
+export const PATH_LANGUAGE_IDS = ['python', 'c', 'cpp', 'java', 'javascript', 'typescript', 'sql'];
+
+/**
+ * Which paths are open.
+ *
+ * Python is the one path written to the current standard — 24 modules with
+ * misconceptions, worked practice tasks and auto-gradable questions. The other
+ * six are the earlier, thinner corpus carried forward by the generator; they
+ * are listed so the shape of the syllabus is visible, but opening one would
+ * promise a depth that is not there yet.
+ *
+ * Kept as a set rather than a flag on each entry so adding a language is a
+ * one-line change here once its markdown lands in content/learn/.
+ */
+export const AVAILABLE_PATH_IDS = new Set(['python']);
+
+export const isPathAvailable = (id) => AVAILABLE_PATH_IDS.has(id);
 
 export const PATH_LANGUAGES = PATH_LANGUAGE_IDS.map((id) => ({
   ...LANGUAGE_BY_ID[id],
   blurb: PATHS[id]?.blurb ?? '',
   pathTitle: PATHS[id]?.title ?? LANGUAGE_BY_ID[id]?.name,
+  available: isPathAvailable(id),
 }));
 
 export const LEVEL_ORDER = ['Beginner', 'Intermediate', 'Advanced'];
@@ -89,15 +106,21 @@ export function levelProgress(languageId, levelName, completed) {
   return { done, total: modules.length, pct: modules.length ? done / modules.length : 0 };
 }
 
-/** Totals for the Learn landing header. */
+/**
+ * Totals for the Learn landing header.
+ *
+ * Counts only what can actually be opened. Advertising 112 modules while six of
+ * the seven paths are closed would be a number the page cannot honour.
+ */
 export function curriculumTotals() {
   let modules = 0;
   let questions = 0;
-  for (const id of PATH_LANGUAGE_IDS) {
+  const open = PATH_LANGUAGE_IDS.filter(isPathAvailable);
+  for (const id of open) {
     for (const m of modulesFor(id)) {
       modules += 1;
       questions += m.questions.length;
     }
   }
-  return { modules, questions, languages: PATH_LANGUAGE_IDS.length };
+  return { modules, questions, languages: open.length };
 }

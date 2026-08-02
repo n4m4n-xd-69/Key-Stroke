@@ -218,10 +218,33 @@ for (const file of files) {
       modules: modules.filter((m) => m.track === t).map((m) => m.number),
     }));
 
+  /**
+   * Checkpoints come from front-matter, one per level:
+   *
+   *     checkpoint_beginner: Title :: What to build
+   *
+   * They live on the level rather than a module because they are what closes a
+   * level, and curriculum.js already attaches them to the last module of each.
+   * Emitting them matters: the bundle being replaced has one per level, and a
+   * generator that silently dropped them would quietly delete a third of what
+   * the Learn view renders.
+   */
+  const checkpointFor = (levelName) => {
+    const raw = meta[`checkpoint_${levelName.toLowerCase()}`];
+    if (!raw) return null;
+    const [title, ...rest] = String(raw).split('::');
+    const brief = rest.join('::').trim();
+    return brief ? { title: title.trim(), brief } : { title: `${levelName} checkpoint`, brief: title.trim() };
+  };
+
   paths[id] = {
     title: meta.title,
     blurb: meta.blurb ?? '',
-    levels: [...byLevel.entries()].map(([name, mods]) => ({ name, modules: mods })),
+    levels: [...byLevel.entries()].map(([name, mods]) => ({
+      name,
+      modules: mods,
+      checkpoint: checkpointFor(name),
+    })),
     tracks,
   };
 }

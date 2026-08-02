@@ -290,13 +290,15 @@ Today the rail is `AISidebar` — static tabbed analysis. You want a conversatio
 `paths.generated.js` says its source is `n4m4n/*.md`, and **`n4m4n/` was deleted**.
 The 102-module corpus can no longer be regenerated. The script exits 0 silently.
 
-- [ ] Restore the source markdown into `content/learn/` (recoverable from
-      `old-history-backup`), or repoint the script
-- [ ] **Format mismatch:** the generator emits questions as objects
+- [x] Authored `content/learn/python.md` from scratch — 24 modules, 216 questions,
+      all nine spine stages, checkpoints per level
+- [x] **Format mismatch:** the generator emits questions as objects
       `{kind, prompt, choices, answer}`; the shipped bundle has plain strings; and
-      `LessonView.jsx:230` renders `{q}` directly. Regenerating today throws
-      *"Objects are not valid as a React child"*. Teach `LessonView` both shapes
-      **before** any regeneration.
+      `LessonView.jsx:230` rendered `{q}` directly. Fixed: `LessonView` now
+      accepts both shapes and renders prompts through Markdown.
+- [ ] Rewrite the six carried-forward paths (c, cpp, java, javascript,
+      typescript, sql) to the Python standard. They are locked in the UI until
+      then — see `AVAILABLE_PATH_IDS` in `src/lib/curriculum.js`.
 
 ---
 

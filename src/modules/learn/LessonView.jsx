@@ -158,6 +158,7 @@ export default function LessonView() {
               {step === 'check' ? (
                 <SelfCheck
                   mod={mod}
+                  language={language}
                   answered={answered}
                   setAnswered={setAnswered}
                   confident={confident}
@@ -187,7 +188,7 @@ export default function LessonView() {
    against. Marking honestly is the exercise — a wrong self-assessment only
    costs the learner. */
 
-function SelfCheck({ mod, answered, setAnswered, confident, allConfident, alreadyDone, onFinish, nextModule, onNext }) {
+function SelfCheck({ mod, language, answered, setAnswered, confident, allConfident, alreadyDone, onFinish, nextModule, onNext }) {
   const [submitted, setSubmitted] = useState(false);
 
   return (
@@ -209,6 +210,12 @@ function SelfCheck({ mod, answered, setAnswered, confident, allConfident, alread
       <ol className="mt-2 space-y-1">
         {mod.questions.map((q, i) => {
           const marked = Boolean(answered[i]);
+          // Two corpora coexist: the original paths store a question as a plain
+          // string, while build-learn.mjs emits {kind, prompt, choices, answer}.
+          // Rendering the object directly threw "Objects are not valid as a
+          // React child", so any regeneration would have taken Learn down.
+          const prompt = typeof q === 'string' ? q : (q?.prompt ?? '');
+          const kind = typeof q === 'string' ? null : q?.kind;
           return (
             <li key={i}>
               <button
@@ -227,7 +234,23 @@ function SelfCheck({ mod, answered, setAnswered, confident, allConfident, alread
                 >
                   {marked ? <Check size={12} strokeWidth={3} /> : i + 1}
                 </span>
-                <span className={cx('text-sm leading-relaxed', marked ? 'text-ink' : 'text-ink-2')}>{q}</span>
+                <span className="min-w-0 flex-1">
+                  {/* Through Markdown, not raw: the authored questions quote
+                      identifiers and whole expressions in backticks, and
+                      printing them literally put `x = [1]; y = x` on screen
+                      with its punctuation showing. */}
+                  <Markdown
+                    text={prompt}
+                    language={language.prism}
+                    compact
+                    className={cx('text-sm', marked ? 'text-ink' : 'text-ink-2')}
+                  />
+                  {kind && kind !== 'recall' ? (
+                    <span className="mt-0.5 inline-block rounded-full bg-subtle px-1 py-px text-2xs font-extrabold uppercase tracking-[0.07em] text-ink-3">
+                      {kind}
+                    </span>
+                  ) : null}
+                </span>
               </button>
             </li>
           );
@@ -285,8 +308,9 @@ function TutorPanel({ mod, languageName }) {
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
 
+  const first = mod.questions[0];
   const suggestions = [
-    mod.questions[0],
+    typeof first === 'string' ? first : first?.prompt,
     `Explain "${mod.title}" with a small ${languageName} example.`,
     'What do people usually get wrong here?',
   ].filter(Boolean);
@@ -358,7 +382,7 @@ function TutorPanel({ mod, languageName }) {
       </div>
 
       <form
-        className="flex items-center gap-1 border-t border-line p-1"
+        className="flex items-center gap-1 border-t border-line p-1 pr-[60px] lg:pr-1"
         onSubmit={(e) => {
           e.preventDefault();
           ask(draft);

@@ -1,14 +1,14 @@
 import { useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, BookOpen, Check, Flag, Flame, Lock, Play } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, Check, Flag, Flame, Lock, Play, Sparkles } from 'lucide-react';
 import Button from '../../components/ui/Button.jsx';
 import { Card, Chip, ProgressBar, ProgressRing, SectionTitle } from '../../components/ui/Primitives.jsx';
 import Counter from '../../components/ui/Counter.jsx';
 import { useStats, useStore } from '../../lib/store.jsx';
 import {
-  LEVEL_STYLE, PATH_LANGUAGES, curriculumTotals, isUnlocked, levelProgress,
-  moduleMinutes, modulesFor, pathFor, trackProgress,
+  LEVEL_STYLE, PATH_LANGUAGES, curriculumTotals, isPathAvailable, isUnlocked,
+  levelProgress, moduleMinutes, modulesFor, pathFor, trackProgress,
 } from '../../lib/curriculum.js';
 import BetaBanner from './BetaBanner.jsx';
 import { cx } from '../../lib/format.js';
@@ -36,14 +36,15 @@ function LanguageGrid() {
   return (
     <div className="space-y-3">
       <BetaBanner />
+      <AvailabilityNotice />
 
       <header className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <p className="eyebrow">Module 03</p>
           <h1 className="mt-0.5 text-3xl font-extrabold">Learn &amp; practise</h1>
           <p className="mt-0.5 max-w-[60ch] text-sm text-ink-3">
-            {totals.languages} mastery paths · {totals.modules} modules · {totals.questions} questions. Beginner
-            through Advanced, each level closing with a checkpoint project.
+            {totals.languages} mastery {totals.languages === 1 ? 'path' : 'paths'} · {totals.modules} modules ·{' '}
+            {totals.questions} questions. Beginner through Advanced, each level closing with a checkpoint project.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -74,34 +75,7 @@ function LanguageGrid() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: Math.min(0.3, i * 0.04) }}
             >
-              <Link to={`/learn/${t.id}`} className="block h-full">
-                <Card interactive className="group relative flex h-full flex-col overflow-hidden p-2.5">
-                  <div
-                    className="pointer-events-none absolute -right-6 -top-6 h-12 w-12 rounded-full opacity-[0.14] transition-transform duration-500 group-hover:scale-150"
-                    style={{ background: t.hue }}
-                    aria-hidden
-                  />
-                  <div className="relative flex items-start gap-1.5">
-                    <span
-                      className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-md font-mono text-sm font-extrabold text-white shadow-sm"
-                      style={{ background: t.hue }}
-                      aria-hidden
-                    >
-                      {t.icon}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-base font-extrabold">{t.pathTitle}</p>
-                      <p className="text-xs text-ink-3">
-                        {t.done} of {t.total} modules
-                      </p>
-                    </div>
-                    {t.pct === 1 ? <Chip tone="brand">complete</Chip> : null}
-                  </div>
-
-                  <p className="relative mt-1.5 line-clamp-3 flex-1 text-xs leading-relaxed text-ink-3">{t.blurb}</p>
-                  <ProgressBar value={t.pct} className="relative mt-2" label={`${t.name} progress`} />
-                </Card>
-              </Link>
+              <PathCard track={t} />
             </motion.div>
           ))}
         </div>
@@ -160,12 +134,35 @@ function Track({ languageId }) {
     return (
       <div className="py-8 text-center">
         <p className="text-lg font-bold">No mastery path for that language yet.</p>
-        <p className="mt-0.5 text-sm text-ink-3">
-          Authored paths exist for {PATH_LANGUAGES.map((l) => l.name).join(', ')}.
-        </p>
+        <p className="mt-0.5 text-sm text-ink-3">Python is the path that is open today.</p>
         <Button className="mt-2" onClick={() => navigate('/learn')}>
           Back to paths
         </Button>
+      </div>
+    );
+  }
+
+  /* The grid does not link here, but a typed URL or an old bookmark still can.
+     Saying why beats rendering a path that is not ready to be worked through. */
+  if (!isPathAvailable(languageId)) {
+    return (
+      <div className="mx-auto max-w-[46ch] py-8 text-center">
+        <span className="mx-auto grid h-[44px] w-[44px] place-items-center rounded-xl bg-subtle text-ink-3">
+          <Lock size={20} strokeWidth={2.2} aria-hidden />
+        </span>
+        <p className="mt-2 text-lg font-extrabold">{path.title} is not open yet</p>
+        <p className="mt-0.5 text-sm leading-relaxed text-ink-3">
+          It is being rewritten to the same depth as the Python path — misconceptions, worked practice tasks and
+          gradable questions in every module. Until then it would promise more than it delivers.
+        </p>
+        <div className="mt-2 flex justify-center gap-1">
+          <Button variant="primary" iconRight={ArrowRight} onClick={() => navigate('/learn/python')}>
+            Take the Python path
+          </Button>
+          <Button variant="ghost" onClick={() => navigate('/learn')}>
+            All paths
+          </Button>
+        </div>
       </div>
     );
   }
@@ -318,6 +315,109 @@ function ModuleRow({ mod, done, unlocked, selfCheck }) {
   return (
     <Link to={`/learn/${mod.languageId}/${mod.number}`} className="block w-full">
       {body}
+    </Link>
+  );
+}
+
+/* ── Availability ──────────────────────────────────────────────────────── */
+
+/**
+ * Says plainly which paths are open.
+ *
+ * Placed above the grid rather than as a badge on each locked card: someone
+ * scanning seven language tiles should learn the rule once, at the top, instead
+ * of inferring it from six identical "soon" chips.
+ */
+function AvailabilityNotice() {
+  const totals = curriculumTotals();
+
+  return (
+    <section className="liquid-glass rounded-lg border border-line px-2.5 py-2" aria-label="Path availability">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-[10px] bg-brand-wash text-brand">
+          <Sparkles size={16} strokeWidth={2.2} aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-extrabold">
+            Python is the only path open right now.
+          </p>
+          <p className="text-xs leading-relaxed text-ink-3">
+            {totals.modules} modules and {totals.questions} questions, from the toolchain through to production —
+            written and reviewed end to end. The other languages are being rewritten to the same depth and will
+            open as they land.
+          </p>
+        </div>
+        <Button as={Link} to="/learn/python" variant="primary" size="sm" iconRight={ArrowRight} className="shrink-0">
+          Start Python
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+/** A path tile. Locked ones stay visible so the roadmap is legible, but they
+ *  are not links — a dead-end route is worse than an honest lock. */
+function PathCard({ track: t }) {
+  const inner = (
+    <Card
+      interactive={t.available}
+      className={cx(
+        'group relative flex h-full flex-col overflow-hidden p-2.5',
+        !t.available && 'opacity-55',
+      )}
+    >
+      <div
+        className={cx(
+          'pointer-events-none absolute -right-6 -top-6 h-12 w-12 rounded-full opacity-[0.14] transition-transform duration-500',
+          t.available && 'group-hover:scale-150',
+        )}
+        style={{ background: t.hue }}
+        aria-hidden
+      />
+      <div className="relative flex items-start gap-1.5">
+        <span
+          className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-md font-mono text-sm font-extrabold text-white shadow-sm"
+          style={{ background: t.hue }}
+          aria-hidden
+        >
+          {t.icon}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-base font-extrabold">{t.pathTitle}</p>
+          <p className="text-xs text-ink-3">
+            {t.available ? `${t.done} of ${t.total} modules` : 'In rewrite'}
+          </p>
+        </div>
+        {!t.available ? (
+          <Chip tone="outline" className="shrink-0">
+            <Lock size={10} strokeWidth={2.6} className="mr-0.5" aria-hidden />
+            soon
+          </Chip>
+        ) : t.pct === 1 ? (
+          <Chip tone="brand">complete</Chip>
+        ) : null}
+      </div>
+
+      <p className="relative mt-1.5 line-clamp-3 flex-1 text-xs leading-relaxed text-ink-3">{t.blurb}</p>
+      {t.available ? (
+        <ProgressBar value={t.pct} className="relative mt-2" label={`${t.name} progress`} />
+      ) : (
+        <div className="relative mt-2 h-[6px] rounded-full bg-line" aria-hidden />
+      )}
+    </Card>
+  );
+
+  if (!t.available) {
+    return (
+      <div aria-disabled title={`${t.pathTitle} is being rewritten and is not open yet`} className="h-full">
+        {inner}
+      </div>
+    );
+  }
+
+  return (
+    <Link to={`/learn/${t.id}`} className="block h-full">
+      {inner}
     </Link>
   );
 }

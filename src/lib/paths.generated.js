@@ -1,11 +1,1671 @@
 /**
  * GENERATED — do not edit by hand.
- * Source: n4m4n/*.md  ·  Regenerate: node scratchpad/parse-paths.mjs
+ * Source: content/learn/*.md  ·  Rebuild: node scripts/build-learn.mjs
  *
- * 102 modules and 512 questions across 7 language paths.
+ * 112 modules and 658 questions across 7 language paths.
+ *
+ * Authored + validated from source: python
+ * Legacy, carried forward from the previous bundle (pre-dates the
+ * validation in build-learn.mjs; questions here are plain strings):
+ *   c, cpp, java, javascript, typescript, sql
  */
 
 export const PATHS = {
+  "python": {
+    "title": "Python",
+    "blurb": "Target modern Python 3.12+. Work in isolated virtual environments, declare projects with `pyproject.toml`, and lean on a formatter, a linter, a type checker and pytest from the first module rather than bolting them on later.",
+    "levels": [
+      {
+        "name": "Beginner",
+        "modules": [
+          {
+            "number": 1,
+            "title": "The toolchain and your first program",
+            "track": "spine",
+            "stage": "toolchain",
+            "level": "Beginner",
+            "prereq": [],
+            "minutes": 25,
+            "learn": "Python is an *interpreted* language: the `python` command reads your source, compiles it to bytecode, and runs that bytecode on a virtual machine. Nothing is compiled ahead of time, which is why a syntax error three functions down still lets the first two run — until the interpreter reaches it.\n\nInstall from python.org or your package manager, then confirm with `python3 --version`. You will meet Python three ways. The **REPL** (`python3` with no arguments) evaluates one expression at a time and prints the result — ideal for questions like \"what does `7 // 2` give me?\". A **script** (`python3 app.py`) runs a file top to bottom. A **module** (`python3 -m http.server`) runs installed code by name.\n\nThe single most important habit is the **virtual environment**. `python3 -m venv .venv` creates an isolated interpreter and package directory; `source .venv/bin/activate` (or `.venv\\Scripts\\activate` on Windows) puts it first on your `PATH`. Without one, `pip install` writes into your system Python and two projects wanting different versions of the same library will fight. Every project gets its own, always, and `.venv/` goes in `.gitignore`.\n\nDeclare dependencies in `pyproject.toml` rather than installing ad hoc, so the project can be rebuilt from a clean machine.",
+            "practice": "Create a project directory with a virtual environment and a `pyproject.toml`. Write `greet.py` that prints a greeting, then run it three ways: directly, with `-m`, and by importing it in the REPL. Deactivate the environment and observe what breaks.",
+            "misconceptions": [
+              "\"Python is not compiled.\" It is — to bytecode, cached in `__pycache__`. It is simply not compiled to machine code ahead of time.",
+              "\"I will make a venv when the project gets big.\" Dependency conflicts arrive on the second project, not the tenth.",
+              "\"`python` and `python3` are the same.\" On many systems `python` is either absent or Python 2. Be explicit."
+            ],
+            "questions": [
+              {
+                "kind": "recall",
+                "prompt": "What are the three ways to invoke Python covered here, and when is each the right one?"
+              },
+              {
+                "kind": "recall",
+                "prompt": "What problem does a virtual environment solve that `pip install --user` does not?"
+              },
+              {
+                "kind": "predict",
+                "prompt": "A syntax error sits on the last line of a 100-line script. What happens when you run it?",
+                "choices": [
+                  "The first 99 lines run, then it fails",
+                  "Nothing runs — it fails before executing anything",
+                  "The bad line is skipped"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "What is `__pycache__` and why should it not be committed?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Write the exact commands to create, activate and deactivate a virtual environment on your operating system."
+              },
+              {
+                "kind": "read",
+                "prompt": "What does `python3 -m http.server` do?",
+                "choices": [
+                  "Runs a file named http.server",
+                  "Runs the installed http.server module as a script",
+                  "Installs the http.server package"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "Why does `.venv/` belong in `.gitignore` when `pyproject.toml` does not?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "You clone a project with a `pyproject.toml` and no `.venv`. What do you run to get working?"
+              },
+              {
+                "kind": "recall",
+                "prompt": "What does it mean that Python is dynamically typed but also strongly typed?"
+              }
+            ]
+          },
+          {
+            "number": 2,
+            "title": "Values, types and the numeric tower",
+            "track": "spine",
+            "stage": "values",
+            "level": "Beginner",
+            "prereq": [],
+            "minutes": 30,
+            "learn": "Every value in Python is an **object** with a type, an identity and a value. `type(x)` reports the first, `id(x)` the second. There are no primitives hiding underneath — `1` is a full `int` object with methods.\n\nThe built-in scalars are `int`, `float`, `bool`, `str`, `bytes`, `complex` and `NoneType`. `int` is arbitrary precision: `2 ** 1000` is exact, with no overflow. `float` is IEEE-754 double precision and therefore *approximate* — `0.1 + 0.2 == 0.3` is `False`, because none of those three are representable in binary. This is not a Python bug; it is what binary floating point is. For money use `decimal.Decimal`, for exact ratios use `fractions.Fraction`.\n\n`bool` is a subclass of `int`: `True == 1` and `True + True == 2`. That is occasionally useful (`sum(flags)` counts them) and occasionally a trap.\n\n`None` is a singleton meaning \"no value\". Test it with `is None`, never `== None`, because `==` can be overridden by a class while `is` compares identity.\n\nConversion is explicit: `int(\"42\")`, `str(42)`, `float(\"3.5\")`. Python will not silently coerce `\"1\" + 1` — it raises `TypeError`, which is the \"strongly typed\" half of \"dynamically, strongly typed\".",
+            "practice": "Write a script demonstrating float imprecision, then fix the same calculation with `Decimal`. Show `2 ** 200` printing exactly. Prove `bool` is an `int` subclass with `isinstance`.",
+            "misconceptions": [
+              "\"Floats are broken.\" They are exact binary fractions; decimal fractions like 0.1 have no finite binary form, just as 1/3 has none in decimal.",
+              "\"`is` and `==` are interchangeable.\" `is` compares identity. It appears to work for small integers only because CPython caches them.",
+              "\"`int` can overflow.\" It cannot. It grows to fit memory."
+            ],
+            "questions": [
+              {
+                "kind": "recall",
+                "prompt": "What three things does every Python object have?"
+              },
+              {
+                "kind": "predict",
+                "prompt": "What does `0.1 + 0.2 == 0.3` evaluate to?",
+                "choices": [
+                  "True",
+                  "False",
+                  "TypeError"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "Why is `Decimal` the right type for money and `float` the wrong one?"
+              },
+              {
+                "kind": "predict",
+                "prompt": "What is the value of `True + True`?",
+                "choices": [
+                  "TypeError",
+                  "2",
+                  "True"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "Why must `None` be tested with `is` rather than `==`?"
+              },
+              {
+                "kind": "read",
+                "prompt": "What does `\"1\" + 1` raise, and what does that tell you about Python's typing?",
+                "choices": [
+                  "Nothing, it gives \"11\"",
+                  "Nothing, it gives 2",
+                  "TypeError, because Python is strongly typed"
+                ],
+                "answer": 2
+              },
+              {
+                "kind": "apply",
+                "prompt": "Compute 10% tax on $19.99 exactly, to the cent, and explain your type choice."
+              },
+              {
+                "kind": "recall",
+                "prompt": "What is the difference between dynamic typing and weak typing?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Show why `a is b` can be `True` for `a = 256; b = 256` and `False` for `a = 257; b = 257`."
+              }
+            ]
+          },
+          {
+            "number": 3,
+            "title": "Names, binding and mutability",
+            "track": "spine",
+            "stage": "bindings",
+            "level": "Beginner",
+            "prereq": [],
+            "minutes": 30,
+            "learn": "This is the module that decides whether Python surprises you for years. A variable in Python is not a box holding a value. It is a **name bound to an object**. `x = [1, 2]` creates a list and points the name `x` at it. `y = x` points a second name at *the same list* — it does not copy.\n\nSo `y.append(3)` changes what `x` sees, because there is one list with two names. But `y = y + [3]` builds a *new* list and rebinds `y`, leaving `x` untouched. Mutation versus rebinding is the whole distinction.\n\nTypes split into **mutable** (`list`, `dict`, `set`, most custom classes) and **immutable** (`int`, `float`, `str`, `tuple`, `frozenset`, `bytes`). Immutability means the object cannot change after creation — `s.upper()` returns a new string rather than modifying `s`.\n\nThis produces the most-reported Python \"bug\": the mutable default argument.\n\n```python\ndef add(item, bucket=[]):   # evaluated ONCE, at definition\n    bucket.append(item)\n    return bucket\n```\n\nEvery call without `bucket` shares one list, which grows forever. The fix is `bucket=None`, then `if bucket is None: bucket = []` inside.\n\nCopying: `list(x)` or `x[:]` makes a **shallow** copy — a new outer list holding the same inner objects. `copy.deepcopy(x)` recurses.",
+            "practice": "Write a function with a mutable default and call it three times to watch the bug. Fix it with the `None` sentinel. Then build a nested list, shallow-copy it, mutate an inner element, and show both copies changed.",
+            "misconceptions": [
+              "\"Python passes by value / by reference.\" Neither. It passes the *object reference by value* — you can mutate the object but not rebind the caller's name.",
+              "\"`tuple` is deeply immutable.\" The tuple cannot be rebound, but a list *inside* it can still be mutated.",
+              "\"`=` copies.\" It never copies. It binds."
+            ],
+            "questions": [
+              {
+                "kind": "recall",
+                "prompt": "Explain the difference between mutating an object and rebinding a name."
+              },
+              {
+                "kind": "predict",
+                "prompt": "`x = [1]; y = x; y.append(2); print(x)` prints what?",
+                "choices": [
+                  "[1]",
+                  "[1, 2]",
+                  "[2]"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "predict",
+                "prompt": "`x = [1]; y = x; y = y + [2]; print(x)` prints what?",
+                "choices": [
+                  "[1]",
+                  "[1, 2]",
+                  "[2]"
+                ],
+                "answer": 0
+              },
+              {
+                "kind": "recall",
+                "prompt": "Why is a mutable default argument evaluated only once, and what is the correct fix?"
+              },
+              {
+                "kind": "read",
+                "prompt": "`t = ([1], 2)` — can you do `t[0].append(3)`?",
+                "choices": [
+                  "No, tuples are immutable",
+                  "Yes, the tuple holds a mutable list",
+                  "Only with copy"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "What is the difference between a shallow and a deep copy?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Write a function that takes a list and returns a sorted copy without modifying the caller's list."
+              },
+              {
+                "kind": "apply",
+                "prompt": "Given `a = {\"k\": [1]}`, produce a copy where mutating the inner list does not affect the original."
+              },
+              {
+                "kind": "recall",
+                "prompt": "Why does `s.upper()` not change `s`?"
+              }
+            ]
+          },
+          {
+            "number": 4,
+            "title": "Operators, expressions and truthiness",
+            "track": "spine",
+            "stage": null,
+            "level": "Beginner",
+            "prereq": [],
+            "minutes": 25,
+            "learn": "Arithmetic: `+ - * /` behave as expected, but `/` **always** yields a `float` — `4 / 2` is `2.0`. Use `//` for floor division and `%` for remainder. Both floor toward negative infinity, so `-7 // 2` is `-4`, not `-3`, and `-7 % 2` is `1`. `**` is exponentiation.\n\nComparison operators chain the way mathematics does: `0 <= x < 10` is one expression, evaluated efficiently, not `(0 <= x) < 10`.\n\nBoolean operators `and`, `or`, `not` **short-circuit** and return an *operand*, not a bool. `a or b` returns `a` if `a` is truthy, otherwise `b` — which is why `name = user_name or \"guest\"` works as a default. Careful: it treats `0` and `\"\"` as missing. When you mean \"if not None\", say so.",
+            "practice": "Write a function normalising a user record that uses `or` for defaults, then find the input where that gives the wrong answer and fix it with an explicit `is None`.",
+            "misconceptions": [
+              "\"`and`/`or` return booleans.\" They return one of their operands.",
+              "\"`-7 // 2` is `-3`.\" It floors, giving `-4`.",
+              "\"`if x:` and `if x is not None:` mean the same.\" They differ for `0`, `\"\"` and `[]`."
+            ],
+            "questions": [
+              {
+                "kind": "predict",
+                "prompt": "What does `4 / 2` evaluate to?",
+                "choices": [
+                  "2",
+                  "2.0",
+                  "TypeError"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "predict",
+                "prompt": "What does `-7 // 2` evaluate to?",
+                "choices": [
+                  "-3",
+                  "-4",
+                  "-3.5"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "What does `a or b` actually return, and why does that make it useful for defaults?"
+              },
+              {
+                "kind": "recall",
+                "prompt": "List the falsy built-in values."
+              },
+              {
+                "kind": "read",
+                "prompt": "`0 or \"fallback\"` gives what, and why is that a hazard for a quantity field?",
+                "choices": [
+                  "0",
+                  "\"fallback\"",
+                  "True"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "apply",
+                "prompt": "Rewrite `if len(items) > 0:` idiomatically."
+              },
+              {
+                "kind": "recall",
+                "prompt": "What does the walrus operator do that plain assignment cannot?"
+              },
+              {
+                "kind": "predict",
+                "prompt": "Is `1 < 2 < 3` valid Python, and what does it mean?",
+                "choices": [
+                  "Invalid syntax",
+                  "True, chained comparison",
+                  "(1<2)<3 which is True<3"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "apply",
+                "prompt": "Write a check that treats `0` as a real value but `None` as missing."
+              }
+            ]
+          },
+          {
+            "number": 5,
+            "title": "Control flow",
+            "track": "spine",
+            "stage": "control-flow",
+            "level": "Beginner",
+            "prereq": [],
+            "minutes": 30,
+            "learn": "Python uses **indentation** for blocks — no braces. Four spaces per level, consistently; mixing tabs and spaces raises `TabError`.\n\n`if` / `elif` / `else` needs no parentheses. There is no `switch`; since 3.10 there is `match`, which is structural pattern matching rather than a C-style switch — it destructures shapes, not just compares values.\n\n`for` iterates over any **iterable**, not an index range. `for item in items:` is the idiom; reach for `range(len(items))` only when you genuinely need the index, and prefer `enumerate(items)` when you need both. `zip(a, b)` walks two sequences together and stops at the shorter.\n\n`while` repeats until its condition goes false. `break` exits the nearest loop, `continue` skips to the next iteration.\n\nPython's oddest control-flow feature is `for ... else`. The `else` runs when the loop finished *without* hitting `break` — useful for search: if nothing broke, nothing was found. Read it as \"no-break\", not \"otherwise\".",
+            "practice": "Write a linear search using `for ... else` that reports both hit and miss without a flag variable. Then rewrite a nested `range(len(...))` loop using `enumerate` and `zip`.",
+            "misconceptions": [
+              "\"`for ... else` runs if the loop body did not.\" It runs if the loop was not `break`-ed.",
+              "\"`for i in range(len(x))` is normal.\" It is a C habit; iterate the object.",
+              "\"Indentation is cosmetic.\" It is syntax."
+            ],
+            "questions": [
+              {
+                "kind": "recall",
+                "prompt": "When does the `else` on a `for` loop execute?"
+              },
+              {
+                "kind": "predict",
+                "prompt": "`for i in range(3): pass` — how many iterations, and what is the last value of `i`?",
+                "choices": [
+                  "3 iterations, i=3",
+                  "3 iterations, i=2",
+                  "4 iterations, i=3"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "What is the difference between `break` and `continue`?"
+              },
+              {
+                "kind": "read",
+                "prompt": "`list(zip([1,2,3], [\"a\",\"b\"]))` gives what?",
+                "choices": [
+                  "[(1,'a'),(2,'b'),(3,None)]",
+                  "[(1,'a'),(2,'b')]",
+                  "Error"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "apply",
+                "prompt": "Rewrite `for i in range(len(names)): print(i, names[i])` idiomatically."
+              },
+              {
+                "kind": "recall",
+                "prompt": "How does `match` differ from a C-style `switch`?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Write a loop that finds the first negative number and reports \"none found\" without using a flag."
+              },
+              {
+                "kind": "recall",
+                "prompt": "Why does mixing tabs and spaces raise an error rather than being tolerated?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Iterate two lists in parallel and stop cleanly when the shorter ends."
+              }
+            ]
+          },
+          {
+            "number": 6,
+            "title": "Functions, arguments and scope",
+            "track": "spine",
+            "stage": "functions",
+            "level": "Beginner",
+            "prereq": [],
+            "minutes": 35,
+            "learn": "`def` creates a function object and binds a name to it. Functions are **first class**: pass them, return them, store them in lists.\n\nParameters come in kinds. Positional-or-keyword is the default. `*args` collects extra positionals into a tuple; `**kwargs` collects extra keywords into a dict. A bare `*` in the signature forces everything after it to be keyword-only — `def connect(host, *, timeout=30)` means `timeout` must be named, which stops `connect(\"db\", 5)` from being ambiguous a year later. A `/` forces everything before it to be positional-only.\n\nDefault values are evaluated **once**, at definition time. See Module 3 for why that matters.\n\nScope follows **LEGB**: Local, Enclosing, Global, Built-in. Assigning to a name anywhere in a function makes it local *for the whole function*, which is why reading it before that assignment raises `UnboundLocalError` rather than falling back to the global. `global` and `nonlocal` opt out, and both are usually a smell.\n\nEvery function returns something; without a `return` it returns `None`.\n\nDocstrings are the first statement in the body, available as `__doc__` and to `help()`.",
+            "practice": "Write a `retry(fn, attempts=3, *, delay=1.0)` helper that takes a callable, retries it, and forces `delay` to be keyword-only. Add a docstring and full type hints.",
+            "misconceptions": [
+              "\"`*args` means pointers.\" It means \"collect the rest\".",
+              "\"A function without `return` returns nothing.\" It returns `None`.",
+              "\"Reading a global inside a function always works.\" Not if you also assign that name in the function."
+            ],
+            "questions": [
+              {
+                "kind": "recall",
+                "prompt": "What do `*args` and `**kwargs` collect, and what types are they?"
+              },
+              {
+                "kind": "recall",
+                "prompt": "What does a bare `*` in a parameter list do, and why would you want it?"
+              },
+              {
+                "kind": "predict",
+                "prompt": "A function with no `return` statement returns what?",
+                "choices": [
+                  "None",
+                  "0",
+                  "Nothing at all"
+                ],
+                "answer": 0
+              },
+              {
+                "kind": "recall",
+                "prompt": "Spell out LEGB and what each level means."
+              },
+              {
+                "kind": "read",
+                "prompt": "Assigning to a global name inside a function without declaring `global` causes what on an earlier read?",
+                "choices": [
+                  "It reads the global",
+                  "UnboundLocalError",
+                  "SyntaxError"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "apply",
+                "prompt": "Write a signature where `host` is positional-only and `timeout` is keyword-only."
+              },
+              {
+                "kind": "recall",
+                "prompt": "When are default argument values evaluated?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Write a function taking any number of numbers and returning their mean, handling the empty case."
+              },
+              {
+                "kind": "recall",
+                "prompt": "What makes functions \"first-class objects\" in Python?"
+              }
+            ]
+          },
+          {
+            "number": 7,
+            "title": "Strings and text",
+            "track": "spine",
+            "stage": null,
+            "level": "Beginner",
+            "prereq": [],
+            "minutes": 30,
+            "learn": "`str` is an immutable sequence of Unicode code points. Every method that \"changes\" a string returns a new one.",
+            "practice": "Write a report formatter aligning names and right-aligned currency in columns using f-string specs. Then benchmark `+=` against `\"\".join` over 100,000 pieces.",
+            "misconceptions": [
+              "\"Strings are mutable because `s += 'x'` works.\" That rebinds `s` to a new string.",
+              "\"`len(s)` is the number of characters.\" It is the number of code points; some user-perceived characters span several.",
+              "\"`.lower()` is enough for case-insensitive comparison.\" `.casefold()` handles cases like German `ß`."
+            ],
+            "questions": [
+              {
+                "kind": "recall",
+                "prompt": "Why is `\"\".join(parts)` preferred over `+=` in a loop?"
+              },
+              {
+                "kind": "read",
+                "prompt": "What does `f\"",
+                "choices": [
+                  "3.14159:.2f}\"` produce? {3.14",
+                  "3.142",
+                  "3.14159"
+                ],
+                "answer": 0
+              },
+              {
+                "kind": "recall",
+                "prompt": "What is the difference between `str` and `bytes`, and when do you convert?"
+              },
+              {
+                "kind": "predict",
+                "prompt": "What does `\"hello\"[::-1]` give?",
+                "choices": [
+                  "\"olleh\"",
+                  "\"hello\"",
+                  "Error"
+                ],
+                "answer": 0
+              },
+              {
+                "kind": "recall",
+                "prompt": "What does `!r` do in an f-string, and why is it useful in logs?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Format a float as currency, right-aligned in 10 columns with thousands separators."
+              },
+              {
+                "kind": "recall",
+                "prompt": "Why does `.casefold()` beat `.lower()` for comparison?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Split a CSV line, strip each field, and rejoin with tabs."
+              },
+              {
+                "kind": "read",
+                "prompt": "`\"abc\"[1:]` gives what?",
+                "choices": [
+                  "\"ab\"",
+                  "\"bc\"",
+                  "\"abc\""
+                ],
+                "answer": 1
+              }
+            ]
+          },
+          {
+            "number": 8,
+            "title": "Lists, tuples, dicts and sets",
+            "track": "spine",
+            "stage": "data-structures",
+            "level": "Beginner",
+            "prereq": [],
+            "minutes": 40,
+            "learn": "Four built-ins carry most Python programs, and choosing the right one is most of the performance you will ever need.",
+            "practice": "Take a list of 10,000 records and write a function finding items whose id appears in a second list — first with a nested loop, then with a set. Time both. Then group records by category using `defaultdict`.",
+            "misconceptions": [
+              "\"Dicts are unordered.\" Not since 3.7 — insertion order is guaranteed.",
+              "\"Tuples are just immutable lists.\" They are conventionally *records* with meaning per position.",
+              "\"`in` is fast.\" It is O(1) on sets and dicts, O(n) on lists."
+            ],
+            "questions": [
+              {
+                "kind": "recall",
+                "prompt": "What is the complexity of `x in lst` versus `x in some_set`, and why?"
+              },
+              {
+                "kind": "recall",
+                "prompt": "What makes an object hashable, and why can't a list be a dict key?"
+              },
+              {
+                "kind": "predict",
+                "prompt": "`lst.insert(0, x)` on a 1,000,000-element list is roughly what cost?",
+                "choices": [
+                  "O(1)",
+                  "O(n), everything shifts",
+                  "O(log n)"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "read",
+                "prompt": "What does `d.get(\"missing\", 0)` do?",
+                "choices": [
+                  "Raises KeyError",
+                  "Returns 0",
+                  "Inserts 0"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "apply",
+                "prompt": "Group a list of `(category, item)` pairs into a dict of lists without writing an `if key not in` check."
+              },
+              {
+                "kind": "recall",
+                "prompt": "When is a tuple the better choice than a list?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Rewrite a nested membership loop using a set and state the complexity change."
+              },
+              {
+                "kind": "recall",
+                "prompt": "What does `collections.Counter` give you that a plain dict does not?"
+              },
+              {
+                "kind": "predict",
+                "prompt": "Are dict keys iterated in insertion order in Python 3.12?",
+                "choices": [
+                  "Yes, guaranteed",
+                  "No, arbitrary",
+                  "Only if sorted"
+                ],
+                "answer": 0
+              }
+            ]
+          }
+        ],
+        "checkpoint": {
+          "title": "Beginner checkpoint",
+          "brief": "Build a command-line expense tracker. Subcommands, `dataclass` models, `Decimal` money, JSON persistence, input validation with useful error messages, full type hints, pytest coverage of the money maths, and an installable local package."
+        }
+      },
+      {
+        "name": "Intermediate",
+        "modules": [
+          {
+            "number": 9,
+            "title": "Comprehensions and the iteration protocol",
+            "track": "spine",
+            "stage": null,
+            "level": "Intermediate",
+            "prereq": [],
+            "minutes": 30,
+            "learn": "A comprehension builds a collection from an iterable in one expression: `[f(x) for x in xs if cond(x)]`. There are list, dict (`{k: v for ...}`), set (`{x for ...}`) and generator (`(x for ...)`) forms. They are faster than an append loop because the interpreter skips the repeated method lookup, and clearer *when they stay short*. A comprehension with three `for` clauses and two conditions is worse than the loop it replaced — that is the honest boundary.\n\nBehind them sits the **iteration protocol**. `for` calls `iter(obj)` to get an iterator, then `next()` until `StopIteration`. Anything implementing `__iter__` works with `for`, unpacking, `in`, `zip`, `sorted` and the rest. This is why the same syntax walks a list, a file, a dict and a database cursor.\n\nThe generator form `(x*2 for x in big)` is **lazy**: it produces values on demand and holds one at a time, so it can run over a 10 GB file. `sum(x*2 for x in big)` never builds a list.",
+            "practice": "Rewrite three nested-loop transformations as comprehensions, then deliberately write one so dense you would reject it in review and convert it back. Read a large file's line lengths with a generator and confirm memory stays flat.",
+            "misconceptions": [
+              "\"Comprehensions are always better.\" Past two clauses, readability loses.",
+              "\"A generator expression is a tuple comprehension.\" There is no tuple comprehension; parentheses give a generator.",
+              "\"You can reuse a generator.\" It is exhausted after one pass."
+            ],
+            "questions": [
+              {
+                "kind": "recall",
+                "prompt": "Which two methods make an object iterable and drive a `for` loop?"
+              },
+              {
+                "kind": "predict",
+                "prompt": "`g = (x for x in range(3)); list(g); list(g)` — what is the second result?",
+                "choices": [
+                  "[0,1,2]",
+                  "[]",
+                  "Error"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "Why can a generator process a file larger than memory?"
+              },
+              {
+                "kind": "read",
+                "prompt": "`",
+                "choices": [
+                  "x: x**2 for x in range(3)}` produces what? {A set",
+                  "A dict",
+                  "A generator"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "apply",
+                "prompt": "Convert a nested loop that filters and transforms into a single comprehension."
+              },
+              {
+                "kind": "recall",
+                "prompt": "When should a comprehension be rewritten as an explicit loop?"
+              },
+              {
+                "kind": "recall",
+                "prompt": "What exception ends iteration, and who raises it?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Sum the squares of a million numbers without allocating a million-element list."
+              },
+              {
+                "kind": "recall",
+                "prompt": "Why is there no tuple comprehension?"
+              }
+            ]
+          },
+          {
+            "number": 10,
+            "title": "Modules, packages and imports",
+            "track": "spine",
+            "stage": "composition",
+            "level": "Intermediate",
+            "prereq": [],
+            "minutes": 30,
+            "learn": "A **module** is a `.py` file; a **package** is a directory of modules, conventionally with `__init__.py`. `import x` binds the module object to `x`; `from x import y` binds `y` directly.\n\nImport runs the module's top-level code **once** per process, then caches it in `sys.modules`. That is why module-level side effects are dangerous: importing something should not open a database connection.\n\n`if __name__ == \"__main__\":` distinguishes \"run directly\" from \"imported\". When run directly `__name__` is `\"__main__\"`; when imported it is the module's name. Put your entry point behind it so importing your script does not execute it.\n\nPrefer **absolute imports** (`from myapp.models import User`) over relative ones. Relative imports (`from .models import User`) work inside a package but break when a file is run directly.",
+            "practice": "Restructure a single 400-line script into a package with `models`, `services` and `cli` modules, an entry point behind the `__main__` guard, and absolute imports. Install it editable and run it by module name.",
+            "misconceptions": [
+              "\"Import runs the file every time.\" It runs once and caches.",
+              "\"`__init__.py` is required.\" Not since 3.3 (namespace packages), but it is still the clearer default.",
+              "\"Circular imports are fixed by importing inside functions.\" That hides a structural problem."
+            ],
+            "questions": [
+              {
+                "kind": "recall",
+                "prompt": "What is the difference between a module and a package?"
+              },
+              {
+                "kind": "predict",
+                "prompt": "Importing the same module in three files runs its top-level code how many times?",
+                "choices": [
+                  "Three",
+                  "Once",
+                  "Once per function"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "What does `if __name__ == \"__main__\":` accomplish?"
+              },
+              {
+                "kind": "read",
+                "prompt": "What is `sys.modules` for?",
+                "choices": [
+                  "The list of installed packages",
+                  "The cache of already-imported modules",
+                  "The import search path"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "Why prefer absolute imports over relative ones?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Given two modules importing each other, describe the structural fix."
+              },
+              {
+                "kind": "recall",
+                "prompt": "Why is module-level I/O a problem?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Lay out a package with models, services and a CLI entry point."
+              },
+              {
+                "kind": "recall",
+                "prompt": "What does `pip install -e .` do and why is it better than editing `sys.path`?"
+              }
+            ]
+          },
+          {
+            "number": 11,
+            "title": "Errors and exceptions",
+            "track": "spine",
+            "stage": "errors",
+            "level": "Intermediate",
+            "prereq": [],
+            "minutes": 35,
+            "learn": "Exceptions are Python's error channel. Raise with `raise ValueError(\"msg\")`, handle with `try` / `except` / `else` / `finally`.\n\nCatch **narrowly**. `except Exception:` swallows bugs you needed to see; bare `except:` also catches `KeyboardInterrupt` and `SystemExit`, so Ctrl-C stops working. Catch the exception you can actually handle.\n\nThe four clauses each have a job. `try` holds the risky call — as few lines as possible. `except` handles a specific failure. `else` runs only when nothing was raised, keeping the success path out of the `try`. `finally` always runs, even through a `return` or an exception, which is where cleanup lives.",
+            "practice": "Write a config loader raising a custom `ConfigError` chained from the underlying `OSError` or `JSONDecodeError`. Prove `finally` runs on the `return` path. Then find code with `except Exception: pass` and narrow it.",
+            "misconceptions": [
+              "\"Exceptions are for exceptional cases only.\" Python uses them for ordinary control flow, e.g. `StopIteration`.",
+              "\"`finally` is skipped if you return in `try`.\" It runs first.",
+              "\"`except Exception` catches everything.\" It misses `KeyboardInterrupt` and `SystemExit`, which inherit from `BaseException`."
+            ],
+            "questions": [
+              {
+                "kind": "recall",
+                "prompt": "What does each of `try`, `except`, `else` and `finally` do?"
+              },
+              {
+                "kind": "predict",
+                "prompt": "A `return` inside `try` with a `finally` present — does `finally` run?",
+                "choices": [
+                  "No",
+                  "Yes, before returning",
+                  "Only on exception"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "Why is bare `except:` harmful?"
+              },
+              {
+                "kind": "read",
+                "prompt": "What does `raise X from err` preserve?",
+                "choices": [
+                  "Nothing extra",
+                  "The original exception as the cause",
+                  "The stack depth"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "What does EAFP mean, and why is it race-free where check-then-act is not?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Write a custom exception hierarchy for a library with a shared base class."
+              },
+              {
+                "kind": "recall",
+                "prompt": "Which base class do `KeyboardInterrupt` and `SystemExit` inherit from, and why does it matter?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Rewrite `if os.path.exists(p): open(p)` in EAFP style and explain the race it removes."
+              },
+              {
+                "kind": "recall",
+                "prompt": "When should you re-raise rather than handle?"
+              }
+            ]
+          },
+          {
+            "number": 12,
+            "title": "Files, paths and context managers",
+            "track": "spine",
+            "stage": null,
+            "level": "Intermediate",
+            "prereq": [],
+            "minutes": 30,
+            "learn": "Always use `with` for files: `with open(p, encoding=\"utf-8\") as f:`. The context manager closes the handle on the way out, including when an exception unwinds — a bare `open()` leaks handles until the garbage collector happens to run, and on CPython that is soon but not guaranteed.",
+            "practice": "Write a `Path`-based function that walks a directory tree, reads every `.txt` with explicit encoding, and returns total word counts — streaming, never loading a whole file. Add a `@contextmanager` timer that reports elapsed time even when the body raises.",
+            "misconceptions": [
+              "\"CPython closes files for me.\" Refcounting usually does, promptly-ish. It is not a guarantee, and not true on other implementations.",
+              "\"Encoding defaults are fine.\" They are platform-dependent and a classic cross-OS bug.",
+              "\"`pathlib` is just sugar.\" It removes a whole class of separator and quoting bugs."
+            ],
+            "questions": [
+              {
+                "kind": "recall",
+                "prompt": "What does `with` guarantee that a bare `open()` does not?"
+              },
+              {
+                "kind": "recall",
+                "prompt": "Why should `encoding` always be passed explicitly?"
+              },
+              {
+                "kind": "predict",
+                "prompt": "`for line in f:` versus `f.read().split(\"\\n\")` on a 5 GB file — which survives?",
+                "choices": [
+                  "Both",
+                  "Only the iteration",
+                  "Only read()"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "read",
+                "prompt": "What does `Path(\"a\") / \"b\"` produce?",
+                "choices": [
+                  "The string \"a/b\"",
+                  "A Path for a/b, OS-correct",
+                  "A division error"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "What is the difference between text and binary mode?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Write a context manager that times its block and reports even if the block raises."
+              },
+              {
+                "kind": "recall",
+                "prompt": "Which two methods must a class implement to be a context manager?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Recursively find every `.json` under a directory using `pathlib`."
+              },
+              {
+                "kind": "recall",
+                "prompt": "Why is `.read()` on an unknown-sized file risky?"
+              }
+            ]
+          },
+          {
+            "number": 13,
+            "title": "Classes, dataclasses and the object model",
+            "track": "spine",
+            "stage": null,
+            "level": "Intermediate",
+            "prereq": [],
+            "minutes": 40,
+            "learn": "`class` defines a type. `__init__` initialises an instance — it is not a constructor; `__new__` allocates, and you rarely touch it. `self` is the instance, passed explicitly, which is why it appears in every method signature.\n\nAttributes live in two places. **Instance attributes** (`self.x = 1`) are per object. **Class attributes** sit on the class and are shared — which is fine for constants and a bug for mutable defaults, exactly as with default arguments.\n\nMethods come in three kinds. Regular methods take `self`. `@classmethod` takes `cls` and is the idiomatic alternative constructor (`User.from_json(...)`). `@staticmethod` takes neither and is really just a function living in a namespace.\n\nPrefer **composition** to inheritance. Inherit when there is a genuine \"is-a\" relationship *and* you want the base's behaviour; otherwise hold a reference. Deep hierarchies are where Python codebases go to die.\n\n`@dataclass` removes the boilerplate for classes that mostly carry data: it generates `__init__`, `__repr__` and `__eq__`. `frozen=True` makes instances immutable and hashable. `field(default_factory=list)` is the correct way to default a mutable attribute.\n\nProperties turn a method into an attribute: `@property` for the getter, `@x.setter` for validation. They let you add computation later without changing callers.",
+            "practice": "Model an `Order` with `@dataclass`, a `Decimal` total computed as a `@property`, a `from_dict` classmethod, and a frozen `Money` value type. Then take a three-level inheritance chain and flatten it with composition.",
+            "misconceptions": [
+              "\"`__init__` is the constructor.\" It initialises an already-allocated object.",
+              "\"Class attributes are per-instance defaults.\" They are shared; mutating one mutates it for all.",
+              "\"`self` is magic.\" It is an ordinary first parameter, named by convention."
+            ],
+            "questions": [
+              {
+                "kind": "recall",
+                "prompt": "Difference between an instance attribute and a class attribute?"
+              },
+              {
+                "kind": "predict",
+                "prompt": "A mutable class attribute mutated through one instance affects what?",
+                "choices": [
+                  "Only that instance",
+                  "Every instance",
+                  "Nothing"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "When is `@classmethod` the right choice over `@staticmethod`?"
+              },
+              {
+                "kind": "read",
+                "prompt": "What does `@dataclass` generate for you?",
+                "choices": [
+                  "Only __init__",
+                  "__init__, __repr__ and __eq__",
+                  "Nothing, it is a type hint"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "Why is `field(default_factory=list)` required instead of `= []`?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Add validation to an existing public attribute without breaking callers."
+              },
+              {
+                "kind": "recall",
+                "prompt": "Give a concrete test for choosing inheritance over composition."
+              },
+              {
+                "kind": "apply",
+                "prompt": "Write an immutable, hashable value type with `@dataclass`."
+              },
+              {
+                "kind": "recall",
+                "prompt": "What does `frozen=True` change about a dataclass?"
+              }
+            ]
+          },
+          {
+            "number": 14,
+            "title": "Dunder methods and the data model",
+            "track": "spine",
+            "stage": null,
+            "level": "Intermediate",
+            "prereq": [],
+            "minutes": 30,
+            "learn": "Python's \"magic\" is a published protocol. Operators and built-ins delegate to **dunder** methods, so your types can participate in the language rather than sitting outside it.\n\n`__repr__` should be unambiguous and, ideally, `eval`-able — it is what you see in a debugger and a traceback. `__str__` is the human-facing form. If you write only one, write `__repr__`; `str()` falls back to it.\n\n`__eq__` defines `==`. Define `__hash__` alongside it whenever instances go in sets or dict keys — defining `__eq__` alone sets `__hash__` to `None` and makes the type unhashable, which is deliberate: two objects that compare equal must hash equal.\n\n`__len__`, `__getitem__`, `__contains__` and `__iter__` make a class behave like a container. `__enter__`/`__exit__` make it a context manager. `__call__` makes an instance callable.\n\n`__slots__` replaces the per-instance `__dict__` with a fixed layout, cutting memory substantially for classes instantiated in the millions — at the cost of dynamic attributes.",
+            "practice": "Build a `Vector` supporting `+`, `*`, `==`, `len()`, indexing and iteration, with a correct `__repr__`. Then measure memory of a million instances with and without `__slots__`.",
+            "misconceptions": [
+              "\"Dunders are private internals.\" They are the public extension protocol.",
+              "\"`__str__` is enough.\" Debuggers and logs use `__repr__`.",
+              "\"Defining `__eq__` is harmless.\" It silently makes your type unhashable."
+            ],
+            "questions": [
+              {
+                "kind": "recall",
+                "prompt": "What is the difference in purpose between `__repr__` and `__str__`?"
+              },
+              {
+                "kind": "predict",
+                "prompt": "Defining `__eq__` without `__hash__` makes instances what?",
+                "choices": [
+                  "Still hashable",
+                  "Unhashable",
+                  "Immutable"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "Which dunders make an object work in a `for` loop?"
+              },
+              {
+                "kind": "read",
+                "prompt": "What does `__call__` enable?",
+                "choices": [
+                  "Calling the class",
+                  "Calling an instance like a function",
+                  "Class construction"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "What does `__slots__` trade away for its memory saving?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Implement `+` for a value type without mutating either operand."
+              },
+              {
+                "kind": "recall",
+                "prompt": "Why must equal objects hash equal?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Make a class usable with `with`."
+              },
+              {
+                "kind": "recall",
+                "prompt": "If you write only one of the two string dunders, which and why?"
+              }
+            ]
+          },
+          {
+            "number": 15,
+            "title": "Type hints and static checking",
+            "track": "spine",
+            "stage": null,
+            "level": "Intermediate",
+            "prereq": [],
+            "minutes": 30,
+            "learn": "Annotations describe intent: `def total(items: list[Item]) -> Decimal:`. Python does **not** enforce them at runtime — they are metadata. Their value comes from `mypy` or `pyright`, which read them and reject mismatches before the code runs, and from editors, which use them for completion and navigation.\n\nModern syntax is built in: `list[int]`, `dict[str, int]`, `int | None`. The old `typing.List` and `Optional[int]` still work but are no longer needed.\n\n`Optional[X]` is exactly `X | None`. Being explicit about nullability is where type checkers pay for themselves — most production `AttributeError`s are a `None` nobody expected.\n\nUseful vocabulary: `Any` (opt out, use sparingly), `Sequence`/`Iterable`/`Mapping` for parameters — accept the widest type you can and return the most specific. `TypedDict` for JSON-shaped dicts, `Protocol` for structural typing (\"anything with a `.read()`\"), `Literal` for fixed value sets, and `TypeVar`/generics for containers.\n\nAdopt gradually: annotate new code and module boundaries first, run `mypy` in CI, and tighten settings over time. `strict = true` on a fresh module is realistic; on a legacy one it is a wall.",
+            "practice": "Annotate an existing module fully and run `mypy --strict` until clean. Replace a loosely typed dict parameter with a `TypedDict`, then define a `Protocol` for a dependency and check that two unrelated classes satisfy it.",
+            "misconceptions": [
+              "\"Type hints slow Python down.\" They are not evaluated at runtime in normal use.",
+              "\"Hints guarantee correctness.\" Only a checker does, and only for what it can see.",
+              "\"`Any` is a safe default.\" It disables checking wherever it spreads."
+            ],
+            "questions": [
+              {
+                "kind": "recall",
+                "prompt": "Does the interpreter enforce annotations? What enforces them?"
+              },
+              {
+                "kind": "read",
+                "prompt": "What is `Optional[int]` equivalent to in modern syntax?",
+                "choices": [
+                  "int",
+                  "None",
+                  "list[int]",
+                  "Any"
+                ],
+                "answer": 0
+              },
+              {
+                "kind": "recall",
+                "prompt": "Why accept `Iterable` in a parameter but return `list`?"
+              },
+              {
+                "kind": "predict",
+                "prompt": "`def f(x: int) -> int: ...` called as `f(\"a\")` at runtime does what?",
+                "choices": [
+                  "TypeError immediately",
+                  "Runs; only a checker objects",
+                  "SyntaxError"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "What problem does `Protocol` solve that a base class does not?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Type a function returning either a parsed record or `None`, and show the caller narrowing it."
+              },
+              {
+                "kind": "recall",
+                "prompt": "When is `TypedDict` the right tool?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Describe a realistic order for adopting types in an untyped codebase."
+              },
+              {
+                "kind": "recall",
+                "prompt": "What is the danger of scattering `Any`?"
+              }
+            ]
+          },
+          {
+            "number": 16,
+            "title": "The standard library worth knowing",
+            "track": "spine",
+            "stage": null,
+            "level": "Intermediate",
+            "prereq": [],
+            "minutes": 30,
+            "learn": "Python ships with enough to avoid most dependencies. Knowing what is already there is a genuine skill.\n\n`collections` — `defaultdict`, `Counter`, `deque` (O(1) at both ends, unlike a list), `namedtuple`. `itertools` — `chain`, `groupby` (requires sorted input, a classic trap), `islice`, `product`, `combinations`. `functools` — `lru_cache` for memoisation, `partial`, `wraps` for writing decorators, `reduce`.\n\n`datetime` — and its one rule: store and compute in **UTC**, convert to local only for display. Use timezone-aware objects (`datetime.now(timezone.utc)`); naive datetimes silently compare wrong. `zoneinfo` provides the tz database with no dependency.\n\n`json` for serialisation, with `default=` for types it does not know. `re` for regular expressions — compile them once at module level when used repeatedly. `logging` rather than `print` for anything long-lived. `argparse` for CLIs. `dataclasses`, `enum`, `decimal`, `statistics`, `secrets` (never `random`) for tokens, `hashlib`, `subprocess`, `sqlite3`, `unittest`, `tempfile`.",
+            "practice": "Rewrite a script that hand-rolls counting, grouping and memoisation using `Counter`, `groupby` and `lru_cache`. Then find every naive `datetime` in a codebase and make it timezone-aware.",
+            "misconceptions": [
+              "\"You need `pandas` to count things.\" `Counter` and `defaultdict` cover a great deal.",
+              "\"`itertools.groupby` groups a list.\" It groups *consecutive* runs; sort first.",
+              "\"`random` is fine for tokens.\" Use `secrets`."
+            ],
+            "questions": [
+              {
+                "kind": "recall",
+                "prompt": "What does `collections.deque` do better than `list`, and where?"
+              },
+              {
+                "kind": "predict",
+                "prompt": "`itertools.groupby` on unsorted input gives what?",
+                "choices": [
+                  "Correct groups",
+                  "Fragmented consecutive runs",
+                  "An error"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "Why store datetimes in UTC?"
+              },
+              {
+                "kind": "read",
+                "prompt": "What does `functools.lru_cache` do?",
+                "choices": [
+                  "Limits recursion",
+                  "Caches results by arguments",
+                  "Frees memory"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "Why `secrets` rather than `random` for tokens?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Count word frequencies and return the top five in two lines."
+              },
+              {
+                "kind": "recall",
+                "prompt": "What is `functools.wraps` for?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Replace a hand-written memo dict with `lru_cache` and note the behaviour difference."
+              },
+              {
+                "kind": "recall",
+                "prompt": "Name three standard-library modules that remove a common third-party dependency."
+              }
+            ]
+          }
+        ],
+        "checkpoint": {
+          "title": "Intermediate checkpoint",
+          "brief": "Build a tested service — a small web API or an automation job. A layered package, strict `mypy`, a real database with migrations, validated input, safe configuration from the environment, structured logging, a Dockerised local environment, and CI that runs the whole check suite."
+        }
+      },
+      {
+        "name": "Advanced",
+        "modules": [
+          {
+            "number": 17,
+            "title": "Iterators, generators and laziness",
+            "track": "spine",
+            "stage": null,
+            "level": "Advanced",
+            "prereq": [],
+            "minutes": 35,
+            "learn": "A **generator function** contains `yield`. Calling it runs no code — it returns a generator object. Each `next()` runs to the next `yield` and suspends, keeping local state on a frame that stays alive between calls. That suspension is the whole idea.\n\nThis buys **laziness**: values are produced on demand, so a pipeline over a 100 GB file holds one record at a time. Chain generators into stages — read, parse, filter, transform — and each stage pulls from the one before. Memory stays flat regardless of input size.\n\n`yield from` delegates to a sub-generator, flattening nested iteration.\n\nGenerators are also **single-pass and stateful**. Once exhausted they stay exhausted; if you need two passes, materialise with `list()` or build it twice. A generator passed to two consumers will surprise the second.\n\n`itertools.tee` duplicates a stream, but buffers whatever the slower consumer has not read — occasionally the right tool, often a memory leak.\n\nBeyond iteration, generators underpin coroutines: `async def` is built on the same suspend-and-resume machinery.",
+            "practice": "Build a three-stage generator pipeline over a large log file — parse, filter errors, extract fields — and confirm memory stays flat with `tracemalloc`. Then hit the double-consumption bug deliberately and fix it.",
+            "misconceptions": [
+              "\"A generator runs when called.\" It runs on first `next()`.",
+              "\"Generators are just lazy lists.\" They cannot be indexed, re-iterated or measured with `len()`.",
+              "\"`return` in a generator returns a value.\" It ends iteration; the value rides on `StopIteration`."
+            ],
+            "questions": [
+              {
+                "kind": "recall",
+                "prompt": "What happens when you *call* a generator function?"
+              },
+              {
+                "kind": "predict",
+                "prompt": "Iterating an exhausted generator a second time yields what?",
+                "choices": [
+                  "The same values",
+                  "Nothing",
+                  "An error"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "How does a generator pipeline keep memory flat over a huge file?"
+              },
+              {
+                "kind": "read",
+                "prompt": "What does `yield from` do?",
+                "choices": [
+                  "Returns a list",
+                  "Delegates to a sub-generator",
+                  "Ends the generator"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "Why can't you call `len()` on a generator?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Convert a function that builds and returns a large list into a generator."
+              },
+              {
+                "kind": "recall",
+                "prompt": "What does `itertools.tee` cost you?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Write a pipeline reading a file, filtering, and summing — without materialising anything."
+              },
+              {
+                "kind": "recall",
+                "prompt": "How do generators relate to `async def`?"
+              }
+            ]
+          },
+          {
+            "number": 18,
+            "title": "Closures and decorators",
+            "track": "spine",
+            "stage": null,
+            "level": "Advanced",
+            "prereq": [],
+            "minutes": 35,
+            "learn": "A **closure** is a function that captures names from an enclosing scope and keeps them alive after that scope returns. The captured variable is a live reference, not a snapshot — which is why building closures in a loop and expecting each to capture that iteration's value is a classic bug. Bind it with a default argument (`lambda x=x: ...`) to snapshot it.\n\nA **decorator** is a function taking a function and returning a replacement. `@log` is exactly `f = log(f)`. Because the replacement is a different object, always apply `functools.wraps` — without it the decorated function loses its `__name__`, `__doc__` and signature, and every tool that introspects it breaks.\n\nA decorator with arguments needs one more layer: a factory that takes the arguments and returns the actual decorator. Three levels of nesting, which is why they are worth writing carefully and reading slowly.\n\nDecorators are how `@property`, `@staticmethod`, `@lru_cache`, `@dataclass` and most web frameworks' routing work. Use them for genuine cross-cutting concerns — logging, timing, retry, caching, access control — and not for business logic, which becomes invisible when hidden behind one.",
+            "practice": "Write `@retry(times=3, delay=0.5)` with correct `wraps`, preserving the signature. Then write a timing decorator and stack them, confirming the order in which they apply.",
+            "misconceptions": [
+              "\"Decorators run at call time.\" The decoration happens at definition; the wrapper runs at call.",
+              "\"`wraps` is cosmetic.\" Without it, introspection, docs and some frameworks break.",
+              "\"Closures capture values.\" They capture variables."
+            ],
+            "questions": [
+              {
+                "kind": "recall",
+                "prompt": "What is `@dec` shorthand for?"
+              },
+              {
+                "kind": "predict",
+                "prompt": "Closures created in a `for` loop capture what?",
+                "choices": [
+                  "Each iteration's value",
+                  "The final value of the variable",
+                  "Nothing"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "What does `functools.wraps` preserve, and what breaks without it?"
+              },
+              {
+                "kind": "read",
+                "prompt": "How many nested functions does a decorator *with arguments* need?",
+                "choices": [
+                  "One",
+                  "Two",
+                  "Three"
+                ],
+                "answer": 2
+              },
+              {
+                "kind": "recall",
+                "prompt": "Name three standard decorators and what each does."
+              },
+              {
+                "kind": "apply",
+                "prompt": "Write a decorator that retries on exception with a configurable count."
+              },
+              {
+                "kind": "recall",
+                "prompt": "When does decoration happen relative to calling?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Fix a loop-created closure so each captures its own value."
+              },
+              {
+                "kind": "recall",
+                "prompt": "What belongs in a decorator, and what does not?"
+              }
+            ]
+          },
+          {
+            "number": 19,
+            "title": "Concurrency: threads, processes and asyncio",
+            "track": "spine",
+            "stage": null,
+            "level": "Advanced",
+            "prereq": [],
+            "minutes": 45,
+            "learn": "Choosing wrongly here costs more than any other decision in this path, and the choice follows from one question: **is the work I/O-bound or CPU-bound?**\n\nThe **GIL** (Global Interpreter Lock) lets only one thread execute Python bytecode at a time in CPython. So threads do *not* speed up CPU-bound work — they add overhead. But the GIL is released during I/O, so threads are genuinely effective for network calls, disk reads and database queries.\n\n- **I/O-bound, moderate concurrency** → `threading` or `concurrent.futures.ThreadPoolExecutor`.\n- **I/O-bound, very high concurrency** → `asyncio`. One thread, an event loop, thousands of sockets. `async def` defines a coroutine; `await` suspends it and lets the loop run others. The rule that matters: **one blocking call poisons the whole loop**, because there is only one thread. Use async-native libraries throughout, or push blocking work to `run_in_executor`.\n- **CPU-bound** → `multiprocessing` or `ProcessPoolExecutor`. Separate processes, separate interpreters, real parallelism — at the cost of process startup and pickling everything across the boundary.\n\nShared mutable state across threads needs a `Lock`. Better still, share nothing: pass data through `queue.Queue`, which is already thread-safe.\n\nPython 3.13 ships an experimental free-threaded build without the GIL. It is not yet the default, and the guidance above still holds for production.",
+            "practice": "Take a script fetching 100 URLs serially and rewrite it three ways: thread pool, asyncio with `gather`, and process pool. Time all four. Explain why the process pool is slowest here and would be fastest for hashing those payloads.",
+            "misconceptions": [
+              "\"Threads make Python parallel.\" Not for CPU work, because of the GIL.",
+              "\"asyncio is faster than threads.\" It scales further for I/O; it is not inherently faster, and it is worse for CPU work.",
+              "\"One blocking call in async is fine.\" It stalls every other coroutine on that loop."
+            ],
+            "questions": [
+              {
+                "kind": "recall",
+                "prompt": "What is the GIL and which workloads does it constrain?"
+              },
+              {
+                "kind": "predict",
+                "prompt": "A CPU-bound task across 4 threads in CPython runs how fast versus 1 thread?",
+                "choices": [
+                  "~4× faster",
+                  "About the same or slower",
+                  "2× faster"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "When is `asyncio` the right choice over a thread pool?"
+              },
+              {
+                "kind": "read",
+                "prompt": "What does one blocking call inside a coroutine do?",
+                "choices": [
+                  "Blocks only that coroutine",
+                  "Stalls the whole event loop",
+                  "Raises an error"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "What does `multiprocessing` cost you that threading does not?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Decide the model for: 500 concurrent HTTP requests; hashing 10,000 files; one slow database query."
+              },
+              {
+                "kind": "recall",
+                "prompt": "Why is `queue.Queue` preferable to a shared list with a lock?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Convert a serial I/O loop to `asyncio.gather` and say what could go wrong."
+              },
+              {
+                "kind": "recall",
+                "prompt": "What does `await` actually do to the current coroutine?"
+              }
+            ]
+          },
+          {
+            "number": 20,
+            "title": "Testing, linting and the quality toolchain",
+            "track": "spine",
+            "stage": "tooling",
+            "level": "Advanced",
+            "prereq": [],
+            "minutes": 40,
+            "learn": "**pytest** is the standard. Tests are plain functions named `test_*` using bare `assert` — pytest rewrites assertions to show the actual values on failure, so no assertion vocabulary is needed. `@pytest.fixture` provides reusable setup with teardown after `yield`. `@pytest.mark.parametrize` runs one test over many inputs, which is where most of the value is: the same test body against twenty cases.\n\nTest **behaviour, not implementation**. A test asserting internal call order breaks on every refactor while proving nothing about correctness. Assert on outputs and observable effects.\n\nMock at boundaries only — the network, the clock, the filesystem — with `unittest.mock` or `monkeypatch`. Mocking your own code usually means the design needs a seam, not a mock.\n\nCoverage (`pytest --cov`) shows what was *executed*, not what was *verified*. 100% coverage with no assertions proves nothing. Treat it as a map of untested areas, not a target.\n\nAround tests sit the rest: **ruff** (linting and formatting, fast, replaces flake8/isort/black for most projects), **mypy** or **pyright** for types, **pre-commit** to run all of it before a commit lands, and CI to run it again where it cannot be skipped. Add `pytest-cov`, `hypothesis` for property-based testing, and `tox`/`nox` when you must support several Python versions.",
+            "practice": "Take an untested module to meaningful coverage with parametrised tests. Add a fixture with teardown, mock exactly one external call, and wire ruff + mypy + pytest into pre-commit and CI.",
+            "misconceptions": [
+              "\"100% coverage means tested.\" It means executed.",
+              "\"Mock everything for isolation.\" Over-mocked tests assert that your mocks work.",
+              "\"Formatting is bikeshedding.\" Automating it ends the argument permanently."
+            ],
+            "questions": [
+              {
+                "kind": "recall",
+                "prompt": "Why does pytest let you use bare `assert`?"
+              },
+              {
+                "kind": "recall",
+                "prompt": "What does `@pytest.mark.parametrize` give you over a loop inside one test?"
+              },
+              {
+                "kind": "predict",
+                "prompt": "A test asserting internal call order does what during a refactor?",
+                "choices": [
+                  "Passes",
+                  "Breaks without indicating a real defect",
+                  "Catches the bug"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "read",
+                "prompt": "What does coverage actually measure?",
+                "choices": [
+                  "Lines verified by assertions",
+                  "Lines executed during tests",
+                  "Branches proven correct"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "Where is mocking appropriate, and where is it a design signal?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Write a fixture providing a temporary database and cleaning it up afterwards."
+              },
+              {
+                "kind": "recall",
+                "prompt": "What does `ruff` replace, and why does that matter?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Describe a CI pipeline for a typed, tested Python package."
+              },
+              {
+                "kind": "recall",
+                "prompt": "What is property-based testing good at that example-based testing is not?"
+              }
+            ]
+          },
+          {
+            "number": 21,
+            "title": "Performance, profiling and memory",
+            "track": "spine",
+            "stage": null,
+            "level": "Advanced",
+            "prereq": [],
+            "minutes": 35,
+            "learn": "**Measure first.** Intuition about Python performance is unreliable; the bottleneck is regularly somewhere nobody suspected. `cProfile` gives per-function call counts and cumulative time — start there to find *where*. `timeit` measures a small snippet accurately, handling warm-up and repetition. `tracemalloc` attributes memory to the lines that allocated it. Line-level tools (`line_profiler`, `memory_profiler`) narrow it further.\n\nThen apply the wins in order of size:\n\n1. **Better algorithm or data structure.** Turning an O(n²) membership scan into a set lookup beats every micro-optimisation combined.\n2. **Do less work.** Cache with `lru_cache`, avoid recomputation, filter earlier in the pipeline.\n3. **Move the loop out of Python.** NumPy, or a library whose inner loop is C.\n4. **Micro-optimise.** Local-variable lookup beats attribute lookup; `join` beats `+=`. Only worth it in a hot loop you have measured.\n5. **Leave Python for the hot path.** C extension, Cython, or a Rust module via PyO3.\n\nOn memory: every object carries overhead — a small `int` is 28 bytes, an empty `dict` around 64. `__slots__` cuts per-instance cost. Generators avoid materialising intermediates. Reference cycles are collected by the cyclic GC, but a cycle holding a large buffer stays alive until it runs.",
+            "practice": "Profile a deliberately slow script, identify the real bottleneck, and fix it algorithmically. Record before-and-after timings. Then use `tracemalloc` to find a leak caused by an ever-growing module-level cache.",
+            "misconceptions": [
+              "\"I know where the slow part is.\" Profile; you frequently do not.",
+              "\"Micro-optimising helps.\" Not compared to fixing the complexity class.",
+              "\"Python has no GC beyond refcounting.\" It also has a cyclic collector."
+            ],
+            "questions": [
+              {
+                "kind": "recall",
+                "prompt": "What is the correct first step in any optimisation, and why?"
+              },
+              {
+                "kind": "recall",
+                "prompt": "What does `cProfile` tell you that `timeit` does not?"
+              },
+              {
+                "kind": "predict",
+                "prompt": "Which yields more: replacing a list scan with a set, or rewriting a loop with local variables?",
+                "choices": [
+                  "The set",
+                  "The locals",
+                  "Equal"
+                ],
+                "answer": 0
+              },
+              {
+                "kind": "read",
+                "prompt": "What does `tracemalloc` report?",
+                "choices": [
+                  "CPU time",
+                  "Memory allocation by line",
+                  "Call counts"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "How does `__slots__` reduce memory?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Describe how you would find and fix an unbounded module-level cache."
+              },
+              {
+                "kind": "recall",
+                "prompt": "Why does CPython need a cyclic collector on top of refcounting?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Given a profile where 90% of time is in one function, what do you check first?"
+              },
+              {
+                "kind": "recall",
+                "prompt": "Name the optimisation strategies in order of typical payoff."
+              }
+            ]
+          },
+          {
+            "number": 22,
+            "title": "Packaging and distribution",
+            "track": "spine",
+            "stage": null,
+            "level": "Advanced",
+            "prereq": [],
+            "minutes": 30,
+            "learn": "`pyproject.toml` is the single modern configuration file — project metadata, dependencies, build backend, and usually the settings for ruff, mypy and pytest too. It replaced `setup.py`, `setup.cfg` and `requirements.txt` for most projects.\n\nDistinguish **applications** from **libraries**. An application pins exact versions for reproducibility (a lock file). A library declares permissive ranges, because pinning in a library forces conflicts on everyone who depends on it.\n\nTwo artefacts: a **wheel** (`.whl`, pre-built, installs fast, preferred) and an **sdist** (`.tar.gz`, source, needs a build step). Publish both. `python -m build` produces them; `twine upload` publishes; test against TestPyPI first.\n\nVersion with **semantic versioning**: major for breaking, minor for additions, patch for fixes. Once published, a version is immutable — publish a new one rather than replacing.\n\nEntry points in `pyproject.toml` create console commands, so `pip install yourtool` yields a `yourtool` executable.\n\nTooling: `pip` plus `venv` is the baseline; `uv` is dramatically faster and increasingly standard; `pipx` installs applications in isolation; `poetry`/`pdm` bundle dependency resolution with packaging.",
+            "practice": "Package a project with full `pyproject.toml` metadata, a console entry point, and classifiers. Build both artefacts, install the wheel into a clean venv, and confirm the command works. Publish to TestPyPI.",
+            "misconceptions": [
+              "\"`requirements.txt` is still the standard.\" It is for pinned application deployments, not for declaring a package.",
+              "\"Pin everything, always.\" Pinning in a library breaks downstream resolution.",
+              "\"A wheel and an sdist are interchangeable.\" A wheel skips the build; an sdist does not."
+            ],
+            "questions": [
+              {
+                "kind": "recall",
+                "prompt": "What does `pyproject.toml` replace?"
+              },
+              {
+                "kind": "recall",
+                "prompt": "Why do libraries use ranges where applications pin?"
+              },
+              {
+                "kind": "read",
+                "prompt": "What is the difference between a wheel and an sdist?",
+                "choices": [
+                  "None",
+                  "Wheel is pre-built, sdist needs building",
+                  "Wheel is source"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "predict",
+                "prompt": "Can you re-upload a fixed version 1.2.0 to PyPI?",
+                "choices": [
+                  "Yes, it overwrites",
+                  "No, versions are immutable",
+                  "Only within 24h"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "What does semantic versioning communicate in each position?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Add a console entry point so installing gives a runnable command."
+              },
+              {
+                "kind": "recall",
+                "prompt": "What is TestPyPI for?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Decide the dependency strategy for a library and for a deployed service."
+              },
+              {
+                "kind": "recall",
+                "prompt": "What does `pipx` solve that `pip install` does not?"
+              }
+            ]
+          },
+          {
+            "number": 23,
+            "title": "CPython internals worth understanding",
+            "track": "spine",
+            "stage": null,
+            "level": "Advanced",
+            "prereq": [],
+            "minutes": 30,
+            "learn": "You do not need to read CPython's source, but a few internals explain behaviour you will otherwise find arbitrary.",
+            "practice": "Use `dis` to compare bytecode for a comprehension versus an append loop. Build a diamond inheritance and print `__mro__`. Demonstrate interning with `is` at 256 and 257, and explain it.",
+            "misconceptions": [
+              "\"CPython is the language.\" It is one implementation; PyPy, MicroPython and others differ.",
+              "\"`is` compares values.\" It compares identity; interning makes it look otherwise.",
+              "\"`super()` calls the parent class.\" It calls the next class in the MRO."
+            ],
+            "questions": [
+              {
+                "kind": "recall",
+                "prompt": "What is the MRO and what problem does it solve?"
+              },
+              {
+                "kind": "predict",
+                "prompt": "`a = 257; b = 257; a is b` — reliably True?",
+                "choices": [
+                  "Always True",
+                  "Not guaranteed",
+                  "Always False"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "What are the two halves of CPython's memory management?"
+              },
+              {
+                "kind": "read",
+                "prompt": "What does `dis.dis(fn)` show?",
+                "choices": [
+                  "Source",
+                  "Bytecode",
+                  "Machine code"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "What are descriptors, and which familiar features rest on them?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Explain a diamond inheritance resolution using `__mro__`."
+              },
+              {
+                "kind": "recall",
+                "prompt": "Why does `__slots__` save memory, in terms of internals?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Show a case where relying on interning produces a bug."
+              },
+              {
+                "kind": "recall",
+                "prompt": "What does `super()` actually do?"
+              }
+            ]
+          },
+          {
+            "number": 24,
+            "title": "Production concerns",
+            "track": "spine",
+            "stage": null,
+            "level": "Advanced",
+            "prereq": [],
+            "minutes": 35,
+            "learn": "Code that runs on your machine and code that runs in production differ in observability, configuration and failure handling.",
+            "practice": "Take a script using `print` and hard-coded settings and make it production-shaped: structured logging, environment configuration validated at startup, timeouts and backoff on every outbound call, and graceful `SIGTERM` shutdown.",
+            "misconceptions": [
+              "\"`print` is fine, I redirect it.\" You lose levels, timestamps, structure and routing.",
+              "\"Retries make things reliable.\" Retrying a non-idempotent write duplicates it.",
+              "\"`pickle` is a serialisation format.\" It is arbitrary code execution."
+            ],
+            "questions": [
+              {
+                "kind": "recall",
+                "prompt": "What does `logging` provide that `print` does not?"
+              },
+              {
+                "kind": "recall",
+                "prompt": "Why should configuration be validated at startup rather than on first use?"
+              },
+              {
+                "kind": "predict",
+                "prompt": "An HTTP call with no timeout can do what?",
+                "choices": [
+                  "Fail fast",
+                  "Hang indefinitely",
+                  "Retry automatically"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "read",
+                "prompt": "Why is `pickle` unsafe on untrusted data?",
+                "choices": [
+                  "It is slow",
+                  "Loading executes arbitrary code",
+                  "It loses types"
+                ],
+                "answer": 1
+              },
+              {
+                "kind": "recall",
+                "prompt": "Which operations are safe to retry, and which are not?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Configure a module logger correctly for a package with several modules."
+              },
+              {
+                "kind": "recall",
+                "prompt": "How do you prevent SQL injection in Python, concretely?"
+              },
+              {
+                "kind": "apply",
+                "prompt": "Describe graceful shutdown on `SIGTERM` for a worker mid-job."
+              },
+              {
+                "kind": "recall",
+                "prompt": "Name three things that must never appear in logs."
+              }
+            ]
+          }
+        ],
+        "checkpoint": {
+          "title": "Advanced capstone",
+          "brief": "Choose a workflow engine, an ingestion pipeline, a production API, a developer tool, or a reusable library. Require architecture notes, typed public contracts, deliberate concurrency with backpressure, durable state, a security pass, profiling evidence, observability, packaging, deployment, and a written failure-recovery playbook."
+        }
+      }
+    ],
+    "tracks": []
+  },
   "c": {
     "title": "C",
     "blurb": "Target: modern, portable C (primarily C17, with awareness of C23). Use a strict build such as `-std=c17 -Wall -Wextra -Wpedantic`, a debugger, and sanitizers when available.",
@@ -697,228 +2357,6 @@ export const PATHS = {
     "extras": [
       {
         "name": "Java-specific mastery checklist",
-        "checkpoint": null,
-        "notes": []
-      }
-    ]
-  },
-  "python": {
-    "title": "Python",
-    "blurb": "Target: modern Python 3. Use isolated virtual environments, `pyproject.toml`, a formatter/linter, type checker, pytest, debugger, and Git. Prefer the standard library before adding dependencies.",
-    "levels": [
-      {
-        "name": "Beginner",
-        "modules": [
-          {
-            "number": 1,
-            "title": "Runtime, syntax, and core values",
-            "learn": "Learn the interpreter/REPL, scripts and modules, indentation, names, dynamic typing, `None`, booleans, numbers, strings, bytes awareness, operators, input/output, and basic tracebacks.",
-            "practice": "build a validated unit converter and run it both as a script and imported module.",
-            "questions": [
-              "What is the difference between a name, an object, and a type in Python?",
-              "What values are considered false in a condition?",
-              "Why does `1 / 2` differ from `1 // 2`?",
-              "How are `str` and `bytes` different?",
-              "What information can you read from a traceback?"
-            ]
-          },
-          {
-            "number": 2,
-            "title": "Control flow and functions",
-            "learn": "Learn conditions, loops, `range`, pattern matching awareness, functions, return values, positional/keyword arguments, defaults, scope, docstrings, recursion, and comprehensions.",
-            "practice": "create a text statistics utility from small pure functions with doctest or pytest examples.",
-            "questions": [
-              "Why are mutable default arguments dangerous?",
-              "How do local, enclosing, global, and built-in scopes resolve names?",
-              "When is a comprehension clearer than an explicit loop?",
-              "What is the difference between printing and returning a value?",
-              "How do positional-only and keyword-only parameters improve an API?"
-            ]
-          },
-          {
-            "number": 3,
-            "title": "Collections, iteration, and data modeling",
-            "learn": "Learn lists, tuples, dictionaries, sets, slicing, unpacking, membership, mutability, copying, sorting keys, iterables/iterators, `enumerate`, `zip`, dataclasses, and enums.",
-            "practice": "build an in-memory inventory with immutable IDs, deduplication, grouping, filtering, and sorting.",
-            "questions": [
-              "How do a list and tuple differ semantically, not merely syntactically?",
-              "Which values can be dictionary keys, and why?",
-              "What is the difference between a shallow and deep copy?",
-              "When is a generator preferable to a list?",
-              "What equality and representation features can a dataclass generate?"
-            ]
-          },
-          {
-            "number": 4,
-            "title": "Modules, files, exceptions, and environments",
-            "learn": "Learn imports, packages, `__name__`, paths, text encodings, context managers, JSON/CSV, exception classes, `try`/`except`/`else`/`finally`, raising, virtual environments, and dependency installation.",
-            "practice": "import a messy CSV into validated dataclass records, report row errors, and export JSON.",
-            "questions": [
-              "Why should file text encoding be explicit?",
-              "What does a context manager guarantee?",
-              "When should a function catch an exception versus let it propagate?",
-              "Why should imports usually live at module level?",
-              "What isolation does a virtual environment provide, and what does it not provide?"
-            ]
-          }
-        ],
-        "checkpoint": {
-          "title": "Beginner checkpoint",
-          "brief": "Build a command-line expense tracker with subcommands, dataclass models, decimal money values, file persistence, validation, useful errors, type hints, tests, and an installable local package."
-        }
-      },
-      {
-        "name": "Intermediate",
-        "modules": [
-          {
-            "number": 5,
-            "title": "Object-oriented Python and the data model",
-            "learn": "Learn class/instance attributes, methods, properties, inheritance, composition, abstract interfaces, protocols awareness, dunder methods, equality/hash, ordering, iteration, representation, and attribute lookup.",
-            "practice": "design collection-like domain objects that behave naturally with `len`, iteration, membership, equality, and helpful representations.",
-            "questions": [
-              "When is a class attribute shared, and why can a mutable one cause bugs?",
-              "What is the difference between `__repr__` and `__str__`?",
-              "When should a property replace direct public attribute access?",
-              "Why can defining equality affect hashability?",
-              "When is composition better than inheritance in Python?"
-            ]
-          },
-          {
-            "number": 6,
-            "title": "Iterators, generators, decorators, and context managers",
-            "learn": "Learn iterator protocol, generator functions/expressions, `yield from`, lazy pipelines, closures, first-class functions, decorators with `functools.wraps`, callable objects, context-manager protocol, and `contextlib`.",
-            "practice": "build a lazy log-processing pipeline with composable generators, timing/retry decorators, and managed input resources.",
-            "questions": [
-              "What state does a suspended generator retain?",
-              "Why can a one-shot iterator appear empty the second time?",
-              "How does a decorator preserve the wrapped function’s metadata?",
-              "What should `__exit__` return to suppress an exception?",
-              "When does laziness reduce memory but complicate debugging or resource lifetime?"
-            ]
-          },
-          {
-            "number": 7,
-            "title": "Type hints and API contracts",
-            "learn": "Learn annotations, unions, optionals, generics, type variables, protocols, typed dictionaries, literals, overloads, narrowing, variance awareness, gradual typing, and static checker configuration.",
-            "practice": "fully type the checkpoint project in strict-enough mode and redesign ambiguous APIs revealed by checker errors.",
-            "questions": [
-              "Do type hints enforce behavior at runtime by default?",
-              "When is a protocol preferable to an abstract base class?",
-              "Why is `list[Dog]` not safely usable as `list[Animal]`?",
-              "What is narrowing, and which control flow produces it?",
-              "When does `Any` intentionally differ from `object`?"
-            ]
-          },
-          {
-            "number": 8,
-            "title": "Testing, debugging, logging, and quality",
-            "learn": "Learn pytest fixtures/parametrization, unit/integration/property tests, mocks/fakes, coverage limitations, debugger use, structured logging, linting, formatting, profiling basics, and CI.",
-            "practice": "test file, time, network, and failure behavior deterministically; reproduce and fix a seeded production-style bug.",
-            "questions": [
-              "What makes a fixture’s scope important?",
-              "Why should code mock at the boundary it controls rather than deep internals?",
-              "What kinds of defects can property-based tests expose?",
-              "Why is high line coverage not proof of useful tests?",
-              "What context belongs in a log record, and what sensitive data must be excluded?"
-            ]
-          },
-          {
-            "number": 9,
-            "title": "HTTP, databases, packaging, and CLI/API delivery",
-            "learn": "Learn HTTP clients, timeouts/retries, API frameworks, SQL drivers/ORM basics, transactions, migrations, configuration, environment variables, `argparse`/modern CLI options, `pyproject.toml`, wheels, dependency locking, and documentation.",
-            "practice": "expose the expense tracker as a small API backed by PostgreSQL and package a migration/admin CLI.",
-            "questions": [
-              "Why must every network call have a timeout?",
-              "Which database operations belong in one transaction?",
-              "How does parameterized SQL prevent injection?",
-              "What is the difference between a source distribution and a wheel?",
-              "Why should configuration be validated at startup?"
-            ]
-          }
-        ],
-        "checkpoint": {
-          "title": "Intermediate checkpoint",
-          "brief": "Build a tested web API or automation service with a layered package, strict type checks, PostgreSQL migrations, validation, authentication basics, safe configuration, structured logs, Docker-based local environment, package metadata, and CI."
-        }
-      },
-      {
-        "name": "Advanced",
-        "modules": [
-          {
-            "number": 10,
-            "title": "Python’s object/runtime model",
-            "learn": "Study identity versus equality, mutability/aliasing, descriptors, method binding, MRO and cooperative inheritance, metaclasses awareness, slots, import machinery, bytecode inspection, reference counting and cyclic GC, weak references, and interpreter differences.",
-            "practice": "explain and implement a validated descriptor, inspect its bytecode/lookup behavior, then show the simpler production alternative.",
-            "questions": [
-              "How do identity and equality differ?",
-              "Why does accessing a function through an instance create a bound method?",
-              "How does the descriptor protocol power methods and properties?",
-              "What problem does C3 MRO solve?",
-              "Why can an object remain alive after every obvious local name disappears?"
-            ]
-          },
-          {
-            "number": 11,
-            "title": "Concurrency, parallelism, and async",
-            "learn": "Learn threads, processes, the GIL as an implementation concern, futures/executors, IPC/pickling costs, `asyncio`, coroutines, tasks, cancellation, task groups, queues, backpressure, synchronization, and graceful shutdown.",
-            "practice": "implement an I/O service in synchronous, threaded, and async forms; load-test and compare complexity, throughput, latency, and shutdown behavior.",
-            "questions": [
-              "When do threads help despite the GIL in CPython?",
-              "When are processes worth their serialization and startup costs?",
-              "What happens if blocking I/O runs inside the event-loop thread?",
-              "Why must cancellation be treated as part of normal control flow?",
-              "How does a bounded queue create backpressure?"
-            ]
-          },
-          {
-            "number": 12,
-            "title": "Performance and native boundaries",
-            "learn": "Learn profiling before optimization, algorithm/data-structure choices, allocation and copying, caching, vectorized/native libraries, serialization cost, multiprocessing shared state, C extension/FFI awareness, benchmarking, and memory profiling.",
-            "practice": "profile a real workload, optimize its measured bottleneck, and publish reproducible before/after evidence without sacrificing tests.",
-            "questions": [
-              "Why can a micro-optimization lose to a better data structure?",
-              "How can vectorized work be faster than a Python loop?",
-              "What inputs and warm-up conditions must a benchmark disclose?",
-              "Why can memoization create a memory leak or stale-data bug?",
-              "Which ownership and error rules matter at a native-code boundary?"
-            ]
-          },
-          {
-            "number": 13,
-            "title": "Architecture, security, and production operations",
-            "learn": "Study dependency direction, domain/application/adapters, plugin architectures, input validation, deserialization risks, command/SQL/template injection, secrets, authentication/authorization, rate limits, metrics/traces/logs, deployment, health checks, and incident diagnosis.",
-            "practice": "threat-model and instrument the intermediate service; add resource limits, authorization tests, trace correlation, metrics, and recovery documentation.",
-            "questions": [
-              "Why is `pickle` unsafe for untrusted input?",
-              "At which layer should authorization decisions be enforced?",
-              "When can retries worsen an outage or duplicate work?",
-              "How do metrics, logs, and traces complement one another?",
-              "Which runtime limits protect a service from oversized or expensive input?"
-            ]
-          },
-          {
-            "number": 14,
-            "title": "Library design and maintainability",
-            "learn": "Learn stable public APIs, deprecation, semantic versioning, dependency compatibility, reproducible builds, documentation, plugin entry points, serialization/version migration, code ownership, architecture tests, and source-code reading.",
-            "practice": "publish a typed library with supported-version policy, changelog, deprecation path, examples, property tests, documentation, and release automation.",
-            "questions": [
-              "What makes an API public even if its name starts with an underscore?",
-              "How can a deprecation be introduced without abruptly breaking users?",
-              "Why should serialized data have an explicit schema/version?",
-              "What does a lock file guarantee, and what can it not guarantee?",
-              "Which maintenance signals should determine whether to accept a dependency?"
-            ]
-          }
-        ],
-        "checkpoint": {
-          "title": "Advanced capstone",
-          "brief": "Choose a workflow engine, data-ingestion platform, production API, developer tool, or reusable library. Require architectural records, typed public contracts, concurrency/backpressure, durable PostgreSQL state where relevant, security review, tests, profiling, observability, packaging, deployment, CI, and a failure-recovery playbook."
-        }
-      }
-    ],
-    "extras": [
-      {
-        "name": "Python-specific mastery checklist",
         "checkpoint": null,
         "notes": []
       }
