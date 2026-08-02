@@ -10,7 +10,7 @@ const KEY = 'keystroke.state.v2';
 
 const EMPTY = {
   version: 2,
-  profile: { name: '', goalMinutes: 15, onboarded: false },
+  profile: { name: '', goalMinutes: 15, onboarded: false, avatar: null, hideFromLeaderboard: false },
   xp: 0,
   streak: { count: 0, best: 0, last: null },
   sessions: [], // newest last, capped

@@ -140,7 +140,11 @@ function rebuildDaily(sessions) {
 export async function pushSessions(userId, sessions) {
   if (!supabase || !sessions?.length) return;
   const rows = sessions.map((s) => sessionToRow(userId, s));
-  const { error } = await supabase.from('sessions').upsert(rows, { onConflict: 'user_id,client_id', ignoreDuplicates: true });
+  // Conflict on the content, not on the hashed client_id. A user cannot finish
+  // two runs in the same millisecond, so (user_id, ts) is the real identity —
+  // and unlike the hash it cannot drift when Postgres reformats a value on the
+  // way back out. See migration 0008.
+  const { error } = await supabase.from('sessions').upsert(rows, { onConflict: 'user_id,ts', ignoreDuplicates: true });
   if (error) throw error;
 }
 
@@ -150,6 +154,8 @@ export async function pushProfile(userId, { profile, xp, streak, settings }) {
     {
       id: userId,
       display_name: profile.name || null,
+      avatar: profile.avatar ?? null,
+      hide_from_leaderboard: profile.hideFromLeaderboard === true,
       goal_minutes: profile.goalMinutes ?? 15,
       xp: xp ?? 0,
       streak_count: streak?.count ?? 0,
@@ -352,6 +358,8 @@ function maxProfile(local, remoteRow) {
   return {
     profile: {
       name: local.profile.name || remoteRow.display_name || '',
+      avatar: local.profile.avatar ?? remoteRow.avatar ?? null,
+      hideFromLeaderboard: local.profile.hideFromLeaderboard ?? remoteRow.hide_from_leaderboard ?? false,
       goalMinutes: local.profile.goalMinutes ?? remoteRow.goal_minutes ?? 15,
       onboarded: local.profile.onboarded,
     },
@@ -366,6 +374,11 @@ function toLocalPatch(remote, local) {
   const profile = profileRow
     ? {
         name: profileRow.display_name || local.profile.name,
+        // Remote wins for both: they are set on one device and are meant to
+        // follow you, and `??` keeps a deliberate `false` rather than treating
+        // it as absent.
+        avatar: profileRow.avatar ?? local.profile.avatar ?? null,
+        hideFromLeaderboard: profileRow.hide_from_leaderboard ?? local.profile.hideFromLeaderboard ?? false,
         goalMinutes: profileRow.goal_minutes ?? local.profile.goalMinutes,
         onboarded: local.profile.onboarded,
       }

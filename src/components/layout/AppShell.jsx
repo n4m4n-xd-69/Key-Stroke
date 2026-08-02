@@ -5,11 +5,12 @@ import {
   BadgeInfo, Braces, ChevronRight, Command, Flame, GraduationCap, Home, Keyboard,
   LineChart, MessageSquare, Trophy,
 } from 'lucide-react';
-import { cx, initials } from '../../lib/format.js';
+import { cx } from '../../lib/format.js';
 import { useStats, useStore } from '../../lib/store.jsx';
 import { levelTitle } from '../../lib/gamification.js';
 import { useReducedMotionSafe } from '../../lib/motion.js';
 import Logo from '../brand/Logo.jsx';
+import Avatar from '../ui/Avatar.jsx';
 import ThemeToggle from './ThemeToggle.jsx';
 import CommandPalette from './CommandPalette.jsx';
 import ChatFab from './ChatFab.jsx';
@@ -230,16 +231,21 @@ export default function AppShell({ children }) {
             ) : null}
           </button>
 
+          {/* Points at the profile, not the rewards page. Someone clicking
+              their own name and avatar is asking about themselves. */}
           <NavLink
-            to="/achievements"
-            title={open ? undefined : `Level ${stats.level.level}`}
-            className="flex w-full items-center rounded-md transition-colors hover:bg-subtle"
+            to="/profile"
+            title={open ? undefined : `${state.profile.name || 'Your profile'} · Level ${stats.level.level}`}
+            className={({ isActive }) =>
+              cx(
+                'flex w-full items-center rounded-md transition-colors hover:bg-subtle',
+                isActive && 'bg-subtle',
+              )
+            }
             style={{ height: RAIL_ITEM + 8 }}
           >
             <IconBox>
-              <span className="grid h-[32px] w-[32px] place-items-center rounded-full bg-brand-solid text-2xs font-extrabold text-brand-ink">
-                {initials(state.profile.name)}
-              </span>
+              <Avatar value={state.profile.avatar} name={state.profile.name} size={32} />
             </IconBox>
             <RailLabel open={open} className="min-w-0 flex-1 pr-1">
               <span className="block truncate text-xs font-extrabold">{state.profile.name || 'Your space'}</span>
@@ -289,12 +295,23 @@ export default function AppShell({ children }) {
               controls: the pill is who you are *in* the app, the menu is which
               account it syncs to. AccountMenu renders nothing at all when
               Supabase is unconfigured, so a keyless build shows no cloud UI. */}
-          <div className="flex items-center gap-1 rounded-full border border-line py-px pl-px pr-1.5">
-            <span className="grid h-[30px] w-[30px] place-items-center rounded-full bg-brand-solid text-2xs font-extrabold text-brand-ink">
-              {initials(state.profile.name)}
-            </span>
+          {/* This was a <div>. It looked exactly like a control — avatar,
+              name initial, level — and did nothing at all when clicked, which
+              is the single most reported thing about this header. It is a link
+              to the profile now. */}
+          <NavLink
+            to="/profile"
+            title="Your profile"
+            className={({ isActive }) =>
+              cx(
+                'flex items-center gap-1 rounded-full border py-px pl-px pr-1.5 transition-colors',
+                isActive ? 'border-brand bg-brand-wash' : 'border-line hover:border-line-strong hover:bg-subtle',
+              )
+            }
+          >
+            <Avatar value={state.profile.avatar} name={state.profile.name} size={30} />
             <span className="hidden text-xs font-bold sm:block">Lv {stats.level.level}</span>
-          </div>
+          </NavLink>
           <AccountMenu />
         </div>
       </header>

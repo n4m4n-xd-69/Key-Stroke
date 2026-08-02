@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { LogIn, LogOut, Pencil, ShieldCheck } from 'lucide-react';
+import { LogIn, LogOut, Pencil, ShieldCheck, User } from 'lucide-react';
 import { useAuth } from '../../lib/auth.jsx';
 import { useStore } from '../../lib/store.jsx';
 import Modal from '../../components/ui/Modal.jsx';
 import Button from '../../components/ui/Button.jsx';
+import Avatar from '../../components/ui/Avatar.jsx';
 import { supabase } from '../../lib/supabase.js';
 import { isGuest } from '../../lib/supabase.js';
 import { useToast } from '../../components/ui/Toast.jsx';
@@ -121,9 +122,9 @@ export default function AccountMenu() {
         aria-haspopup="menu"
         aria-expanded={open}
         title={label}
-        className="grid h-[30px] w-[30px] place-items-center rounded-full bg-brand-wash text-2xs font-extrabold text-brand transition-transform active:scale-95"
+        className="grid h-[30px] w-[30px] place-items-center rounded-full transition-transform active:scale-95"
       >
-        {label.slice(0, 1).toUpperCase()}
+        <Avatar value={state.profile.avatar} name={label} size={30} />
       </button>
       {open ? (
         <div
@@ -162,6 +163,14 @@ export default function AccountMenu() {
               </span>
             </button>
           ) : null}
+          <Link
+            role="menuitem"
+            to="/profile"
+            onClick={() => setOpen(false)}
+            className="flex w-full items-center gap-1 border-b border-line px-2 py-1.5 text-left text-sm font-semibold text-ink-2 transition-colors hover:bg-subtle hover:text-ink"
+          >
+            <User size={14} strokeWidth={2.2} aria-hidden /> My profile
+          </Link>
           <button
             role="menuitem"
             onClick={() => {

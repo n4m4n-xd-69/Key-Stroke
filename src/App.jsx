@@ -13,6 +13,7 @@ const LessonView = lazy(() => import('./modules/learn/LessonView.jsx'));
 const Dashboard = lazy(() => import('./modules/dashboard/Dashboard.jsx'));
 const Achievements = lazy(() => import('./modules/achievements/Achievements.jsx'));
 const AIChat = lazy(() => import('./modules/chat/AIChat.jsx'));
+const Profile = lazy(() => import('./modules/profile/Profile.jsx'));
 const About = lazy(() => import('./modules/about/About.jsx'));
 const AdminPanel = lazy(() => import('./modules/admin/AdminPanel.jsx'));
 
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/achievements" element={<Achievements />} />
           <Route path="/chat" element={<AIChat />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/about" element={<About />} />
           {/* Reached from the account menu rather than the nav: the mobile
               tab bar shares NAV_GROUPS, and an operator view only one account

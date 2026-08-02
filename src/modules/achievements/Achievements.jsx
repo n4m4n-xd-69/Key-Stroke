@@ -11,7 +11,8 @@ import { Card, Chip, ProgressRing, SectionTitle } from '../../components/ui/Prim
 import MissionStrip from '../../components/gamify/MissionStrip.jsx';
 import { useStats, useStore } from '../../lib/store.jsx';
 import { ACHIEVEMENTS, LEVEL_TITLES, TIER_STYLES, levelTitle, xpForLevel } from '../../lib/gamification.js';
-import { cx, initials } from '../../lib/format.js';
+import { cx } from '../../lib/format.js';
+import Avatar from '../../components/ui/Avatar.jsx';
 import { supabase } from '../../lib/supabase.js';
 
 /* Explicit map rather than `import * as Icons` — a namespace import of
@@ -36,7 +37,7 @@ const BADGE_ICONS = {
  * Falls back to a board of one — you — when signed out or unconfigured, rather
  * than inventing rivals. A fake ranking is worse than an honest empty one.
  */
-function useLeaderboard(name, xp) {
+function useLeaderboard(name, xp, avatar) {
   const [remote, setRemote] = useState(null);
 
   useEffect(() => {
@@ -44,7 +45,7 @@ function useLeaderboard(name, xp) {
     let cancelled = false;
     supabase
       .from('leaderboard')
-      .select('display_name, xp')
+      .select('display_name, avatar, xp')
       .order('xp', { ascending: false })
       .limit(25)
       .then(({ data, error }) => {
@@ -60,16 +61,16 @@ function useLeaderboard(name, xp) {
   }, [xp]); // refetch once your own total moves, so the board stays current
 
   return useMemo(() => {
-    const you = { name: name || 'You', xp, you: true };
+    const you = { name: name || 'You', avatar, xp, you: true };
     const others = (remote ?? [])
       .filter((r) => r.display_name && r.display_name !== you.name)
-      .map((r) => ({ name: r.display_name, xp: r.xp ?? 0, you: false }));
+      .map((r) => ({ name: r.display_name, avatar: r.avatar ?? null, xp: r.xp ?? 0, you: false }));
 
     return {
       live: Boolean(supabase) && others.length > 0,
       rows: [...others, you].sort((a, b) => b.xp - a.xp).slice(0, 10),
     };
-  }, [remote, name, xp]);
+  }, [remote, name, xp, avatar]);
 }
 
 export default function Achievements() {
@@ -79,7 +80,7 @@ export default function Achievements() {
   const unlocked = ACHIEVEMENTS.filter((a) => state.achievements[a.id]);
   const locked = ACHIEVEMENTS.filter((a) => !state.achievements[a.id]);
 
-  const { rows: leaderboard, live } = useLeaderboard(state.profile.name, stats.xp);
+  const { rows: leaderboard, live } = useLeaderboard(state.profile.name, stats.xp, state.profile.avatar);
 
   return (
     <div className="space-y-3">
@@ -161,15 +162,12 @@ export default function Achievements() {
                     {i + 1}
                   </span>
                   {i === 0 ? <Crown size={14} className="text-warn" aria-hidden /> : null}
-                  <span
-                    className={cx(
-                      'grid h-[26px] w-[26px] place-items-center rounded-full text-2xs font-extrabold',
-                      row.you ? 'bg-brand-solid text-brand-ink' : 'bg-subtle text-ink-2',
-                    )}
-                    aria-hidden
-                  >
-                    {initials(row.name)}
-                  </span>
+                  <Avatar
+                    value={row.avatar}
+                    name={row.name}
+                    size={26}
+                    className={cx(row.you && 'ring-2 ring-brand ring-offset-1 ring-offset-surface')}
+                  />
                   <span className={cx('text-sm', row.you ? 'font-extrabold' : 'font-semibold text-ink-2')}>
                     {row.name}
                     {row.you ? ' (you)' : ''}
