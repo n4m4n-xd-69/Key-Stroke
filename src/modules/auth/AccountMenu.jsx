@@ -25,7 +25,7 @@ import { fetchMyRole } from '../admin/adminApi.js';
  * an operator entry that only one account can use has no business taking a
  * permanent slot in primary navigation anyway.
  */
-export default function AccountMenu() {
+export default function AccountMenu({ level }) {
   const { user, cloudEnabled, openAuthModal, signOut } = useAuth();
   const { state } = useStore();
   const { toast } = useToast();
@@ -77,11 +77,12 @@ export default function AccountMenu() {
       <>
         <button
           onClick={() => setRenaming(true)}
-          title="Your name"
+          title="Your name and avatar"
           className="hidden h-[36px] shrink-0 items-center gap-0.5 rounded-full border border-line px-1.5 text-xs font-bold text-ink-2 transition-colors hover:bg-subtle hover:text-ink sm:flex"
         >
-          <Pencil size={13} strokeWidth={2.2} aria-hidden />
+          <Avatar value={state.profile.avatar} name={state.profile.name} size={26} />
           {state.profile.name || 'Set your name'}
+          {level != null ? <span className="text-ink-3">· Lv {level}</span> : null}
         </button>
         <RenameModal open={renaming} onClose={() => setRenaming(false)} />
       </>
@@ -97,8 +98,9 @@ export default function AccountMenu() {
           aria-label="Change your name"
           className="hidden h-[36px] shrink-0 items-center gap-0.5 rounded-full border border-line px-1.5 text-xs font-bold text-ink-2 transition-colors hover:bg-subtle hover:text-ink sm:flex"
         >
-          <Pencil size={13} strokeWidth={2.2} aria-hidden />
+          <Avatar value={state.profile.avatar} name={state.profile.name} size={26} />
           {state.profile.name || 'Name'}
+          {level != null ? <span className="text-ink-3">· Lv {level}</span> : null}
         </button>
         <button
           onClick={() => openAuthModal('sign-in')}
@@ -122,9 +124,14 @@ export default function AccountMenu() {
         aria-haspopup="menu"
         aria-expanded={open}
         title={label}
-        className="grid h-[30px] w-[30px] place-items-center rounded-full transition-transform active:scale-95"
+        className={cx(
+          'flex items-center gap-1 rounded-full border py-px pl-px transition-colors active:scale-95',
+          level == null ? 'pr-px' : 'pr-1.5',
+          open ? 'border-brand bg-brand-wash' : 'border-line hover:border-line-strong hover:bg-subtle',
+        )}
       >
         <Avatar value={state.profile.avatar} name={label} size={30} />
+        {level != null ? <span className="hidden text-xs font-bold sm:block">Lv {level}</span> : null}
       </button>
       {open ? (
         <div

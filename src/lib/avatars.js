@@ -1,46 +1,17 @@
 /**
  * Preset avatars.
  *
- * Drawn as SVG from data here rather than shipped as image files: twelve PNGs
- * would be ~200 KB of assets that need retina variants and cannot follow the
- * theme, where this is a few hundred bytes that scales to any size and stays
- * crisp. It also means a new avatar is one entry in an array.
+ * Drawn as SVG from data rather than shipped as image files: two dozen PNGs
+ * would be hundreds of KB needing retina variants, where this is a few hundred
+ * bytes that stays crisp from 24px in a leaderboard row to 96px in a picker.
+ * Adding one is a single entry below.
  *
- * The look is the Netflix / JioHotstar profile tile — a saturated block colour
- * with a simple face — chosen because it reads at 28px in a sidebar as well as
- * at 96px in a picker, which photographs of anything do not.
+ * Each avatar composes four independent parts — a colour pair, a head shape
+ * (ears, hair, hood), an eye style and a mouth. Composition is what keeps
+ * twenty-four of them genuinely distinct without drawing twenty-four separate
+ * illustrations: a cat and a fox share ear geometry but differ in colour, eyes
+ * and muzzle, so neither reads as a recolour of the other.
  */
-
-/** Face geometry, in a 100×100 box. Eyes are drawn per-variant; the mouth is
- *  a path so it can be a smile, a line or an open shape. */
-const FACES = {
-  smile:   { eyes: 'dots',  mouth: 'M32 60 Q50 76 68 60', open: false },
-  grin:    { eyes: 'dots',  mouth: 'M30 56 Q50 80 70 56 Z', open: true },
-  calm:    { eyes: 'lines', mouth: 'M36 64 L64 64', open: false },
-  wink:    { eyes: 'wink',  mouth: 'M34 60 Q50 74 66 60', open: false },
-  cool:    { eyes: 'shade', mouth: 'M36 64 Q50 72 64 64', open: false },
-  focus:   { eyes: 'dots',  mouth: 'M38 66 Q50 60 62 66', open: false },
-};
-
-/**
- * Twelve tiles. Hues are spaced around the wheel so any two picked at random
- * stay distinguishable at sidebar size, which a randomised palette does not
- * guarantee.
- */
-export const PRESET_AVATARS = [
-  { id: 'aurora',  bg: '#a3e635', ink: '#1a2e05', face: 'smile' },
-  { id: 'ember',   bg: '#fb7185', ink: '#4c0519', face: 'grin'  },
-  { id: 'tide',    bg: '#38bdf8', ink: '#082f49', face: 'calm'  },
-  { id: 'dusk',    bg: '#a78bfa', ink: '#2e1065', face: 'wink'  },
-  { id: 'amber',   bg: '#fbbf24', ink: '#451a03', face: 'cool'  },
-  { id: 'mint',    bg: '#34d399', ink: '#022c22', face: 'focus' },
-  { id: 'coral',   bg: '#fb923c', ink: '#431407', face: 'smile' },
-  { id: 'orchid',  bg: '#f472b6', ink: '#500724', face: 'grin'  },
-  { id: 'steel',   bg: '#94a3b8', ink: '#0f172a', face: 'calm'  },
-  { id: 'violet',  bg: '#818cf8', ink: '#1e1b4b', face: 'cool'  },
-  { id: 'lime',    bg: '#bef264', ink: '#1a2e05', face: 'wink'  },
-  { id: 'cyan',    bg: '#22d3ee', ink: '#083344', face: 'focus' },
-];
 
 export const PRESET_PREFIX = 'preset:';
 
@@ -48,6 +19,45 @@ export const isPreset = (v) => typeof v === 'string' && v.startsWith(PRESET_PREF
 export const presetId = (v) => (isPreset(v) ? v.slice(PRESET_PREFIX.length) : null);
 export const toPresetValue = (id) => `${PRESET_PREFIX}${id}`;
 export const findPreset = (v) => PRESET_AVATARS.find((p) => p.id === presetId(v)) ?? null;
+
+/**
+ * `head`  — silhouette behind the face: none | cat | dog | fox | bear | bunny
+ *           | hair | bob | pony | hood | horns | halo | cap
+ * `eyes`  — dots | wide | anime | sleepy | shades | wink | star | visor | happy
+ * `mouth` — smile | grin | cat | smirk | flat | oh | tongue | fang
+ * `blush` — the two cheek dots that read as "cute" at small sizes
+ */
+export const PRESET_AVATARS = [
+  // ── Animals ──────────────────────────────────────────────────────────────
+  { id: 'cat',     label: 'Cat',      bg: '#fbbf24', ink: '#451a03', head: 'cat',   eyes: 'happy',  mouth: 'cat',    blush: true },
+  { id: 'kitten',  label: 'Kitten',   bg: '#f9a8d4', ink: '#500724', head: 'cat',   eyes: 'wide',   mouth: 'cat',    blush: true },
+  { id: 'dog',     label: 'Dog',      bg: '#d6a06a', ink: '#3b2412', head: 'dog',   eyes: 'dots',   mouth: 'tongue' },
+  { id: 'pup',     label: 'Puppy',    bg: '#fcd34d', ink: '#3b2412', head: 'dog',   eyes: 'wide',   mouth: 'grin',   blush: true },
+  { id: 'fox',     label: 'Fox',      bg: '#fb923c', ink: '#431407', head: 'fox',   eyes: 'smirk',  mouth: 'smirk' },
+  { id: 'bear',    label: 'Bear',     bg: '#a16207', ink: '#291a04', head: 'bear',  eyes: 'dots',   mouth: 'flat' },
+  { id: 'panda',   label: 'Panda',    bg: '#e5e7eb', ink: '#111827', head: 'bear',  eyes: 'wide',   mouth: 'smile' },
+  { id: 'bunny',   label: 'Bunny',    bg: '#fbcfe8', ink: '#4a044e', head: 'bunny', eyes: 'happy',  mouth: 'cat',    blush: true },
+  { id: 'frog',    label: 'Frog',     bg: '#4ade80', ink: '#052e16', head: 'none',  eyes: 'wide',   mouth: 'flat' },
+  { id: 'owl',     label: 'Owl',      bg: '#8b5cf6', ink: '#2e1065', head: 'horns', eyes: 'wide',   mouth: 'oh' },
+
+  // ── People ───────────────────────────────────────────────────────────────
+  { id: 'sigma',   label: 'Sigma',    bg: '#334155', ink: '#f1f5f9', head: 'none',  eyes: 'shades', mouth: 'flat' },
+  { id: 'chad',    label: 'Stoic',    bg: '#0f172a', ink: '#e2e8f0', head: 'none',  eyes: 'sleepy', mouth: 'smirk' },
+  { id: 'girl',    label: 'Long hair', bg: '#f472b6', ink: '#500724', head: 'hair', eyes: 'anime',  mouth: 'smile' },
+  { id: 'bob',     label: 'Bob cut',  bg: '#c084fc', ink: '#2e1065', head: 'bob',   eyes: 'happy',  mouth: 'smile' },
+  { id: 'pony',    label: 'Ponytail', bg: '#38bdf8', ink: '#082f49', head: 'pony',  eyes: 'wink',   mouth: 'grin' },
+  { id: 'anime',   label: 'Anime',    bg: '#a78bfa', ink: '#1e1b4b', head: 'hair',  eyes: 'star',   mouth: 'oh',     blush: true },
+  { id: 'senpai',  label: 'Senpai',   bg: '#fda4af', ink: '#4c0519', head: 'bob',   eyes: 'anime',  mouth: 'fang',   blush: true },
+  { id: 'ninja',   label: 'Ninja',    bg: '#1f2937', ink: '#f9fafb', head: 'hood',  eyes: 'sleepy', mouth: 'none' },
+
+  // ── Characters ───────────────────────────────────────────────────────────
+  { id: 'robot',   label: 'Robot',    bg: '#94a3b8', ink: '#0f172a', head: 'none',  eyes: 'visor',  mouth: 'flat' },
+  { id: 'alien',   label: 'Alien',    bg: '#34d399', ink: '#022c22', head: 'none',  eyes: 'anime',  mouth: 'flat' },
+  { id: 'devil',   label: 'Mischief', bg: '#f87171', ink: '#450a0a', head: 'horns', eyes: 'smirk',  mouth: 'fang' },
+  { id: 'angel',   label: 'Angel',    bg: '#bae6fd', ink: '#0c4a6e', head: 'halo',  eyes: 'happy',  mouth: 'smile' },
+  { id: 'coder',   label: 'Coder',    bg: '#a3e635', ink: '#1a2e05', head: 'cap',   eyes: 'dots',   mouth: 'smile' },
+  { id: 'ghost',   label: 'Ghost',    bg: '#e0e7ff', ink: '#312e81', head: 'none',  eyes: 'oh',     mouth: 'oh' },
+];
 
 /** A stable default per person, so an unset avatar is still recognisably theirs
  *  rather than everyone sharing one grey circle. */
@@ -62,9 +72,9 @@ export function defaultPresetFor(seed) {
  * Downscales and re-encodes a chosen file.
  *
  * A phone photo is 3–8 MB, which cannot go in a text column and has no business
- * in a 28px circle. Cropping to a square from the centre and re-encoding at
- * 160px lands around 6–10 KB, small enough to store inline and to sync without
- * a separate upload path.
+ * in a 28px circle. Centre-cropping to a square and re-encoding at 160px lands
+ * around 6–10 KB, small enough to store inline and to sync without a separate
+ * upload path.
  */
 export function fileToAvatarDataUrl(file, size = 160) {
   return new Promise((resolve, reject) => {
@@ -80,7 +90,6 @@ export function fileToAvatarDataUrl(file, size = 160) {
       canvas.width = size;
       canvas.height = size;
       const ctx = canvas.getContext('2d');
-      // Centre-crop to a square first, so portraits are not squashed.
       const side = Math.min(img.width, img.height);
       ctx.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, size, size);
       try {

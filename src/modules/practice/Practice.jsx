@@ -13,6 +13,7 @@ import { Card, Chip, ProgressBar, SectionTitle } from '../../components/ui/Primi
 import TypingStage from '../../components/typing/TypingStage.jsx';
 import HandGuide from '../../components/typing/HandGuide.jsx';
 import KeyboardViz from '../../components/typing/KeyboardViz.jsx';
+import WeakKeyStrip from '../../components/typing/WeakKeyStrip.jsx';
 import SessionSummary from '../../components/typing/SessionSummary.jsx';
 import useTypingEngine from '../../components/typing/useTypingEngine.js';
 import MissionStrip from '../../components/gamify/MissionStrip.jsx';
@@ -351,8 +352,9 @@ export default function Practice() {
                   keys. A border plus real padding reserves the gap structurally
                   rather than relying on the stage never being full. */}
                 {settings.showKeyboard ? (
-                  <div className="mt-4 hidden justify-center border-t border-line/60 pt-4 md:flex">
+                  <div className="mt-1.5 hidden flex-col items-center gap-1.5 md:flex">
                     <KeyboardViz nextChar={engine.nextChar} keyStats={stats.keyStats} />
+                    <WeakKeyStrip keyStats={stats.keyStats} />
                   </div>
                 ) : null}
               </div>
@@ -399,12 +401,17 @@ export default function Practice() {
             {stage}
           </div>
 
+          {/* Sits close under the passage now. The divider and generous
+              padding were added to stop the keyboard colliding with the last
+              line; the stage sizes itself to its content since then, so the
+              gap was reserving space for a problem that no longer exists. */}
           {settings.showKeyboard ? (
-            <div className="mx-3 mt-4 hidden justify-center border-t border-line/60 pb-4 pt-4 sm:mx-5 md:flex">
+            <div className="mx-3 mb-2 mt-1.5 hidden flex-col items-center gap-1.5 sm:mx-5 md:flex">
               <KeyboardViz nextChar={engine.nextChar} keyStats={stats.keyStats} />
+              <WeakKeyStrip keyStats={stats.keyStats} />
             </div>
           ) : (
-            <div className="pb-3" />
+            <div className="pb-2" />
           )}
         </Card>
 

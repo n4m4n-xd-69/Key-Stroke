@@ -295,24 +295,11 @@ export default function AppShell({ children }) {
               controls: the pill is who you are *in* the app, the menu is which
               account it syncs to. AccountMenu renders nothing at all when
               Supabase is unconfigured, so a keyless build shows no cloud UI. */}
-          {/* This was a <div>. It looked exactly like a control — avatar,
-              name initial, level — and did nothing at all when clicked, which
-              is the single most reported thing about this header. It is a link
-              to the profile now. */}
-          <NavLink
-            to="/profile"
-            title="Your profile"
-            className={({ isActive }) =>
-              cx(
-                'flex items-center gap-1 rounded-full border py-px pl-px pr-1.5 transition-colors',
-                isActive ? 'border-brand bg-brand-wash' : 'border-line hover:border-line-strong hover:bg-subtle',
-              )
-            }
-          >
-            <Avatar value={state.profile.avatar} name={state.profile.name} size={30} />
-            <span className="hidden text-xs font-bold sm:block">Lv {stats.level.level}</span>
-          </NavLink>
-          <AccountMenu />
+          {/* One identity control, not two. The level pill and the account
+              menu each rendered the same avatar side by side, so the header
+              showed your face twice. AccountMenu now owns the pill and the
+              level sits inside it. */}
+          <AccountMenu level={stats.level.level} />
         </div>
       </header>
 

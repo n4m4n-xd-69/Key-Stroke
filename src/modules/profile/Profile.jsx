@@ -8,7 +8,7 @@ import {
 import Button, { IconButton } from '../../components/ui/Button.jsx';
 import { Card, Chip, ProgressBar } from '../../components/ui/Primitives.jsx';
 import Avatar, { PresetTile } from '../../components/ui/Avatar.jsx';
-import { Reveal, Stagger, StaggerItem } from '../../components/ui/Motion.jsx';
+import { Reveal } from '../../components/ui/Motion.jsx';
 import { useToast } from '../../components/ui/Toast.jsx';
 import { useAuth } from '../../lib/auth.jsx';
 import { useStats, useStore } from '../../lib/store.jsx';
@@ -92,99 +92,108 @@ export default function Profile() {
         </p>
       </header>
 
-      {/* ── Identity ────────────────────────────────────────────────────── */}
+      {/* ── Identity and picker, side by side ────────────────────────────
+          Two stacked full-width cards left the identity row mostly empty and
+          pushed the picker below the fold. They share a row now, and the
+          picker — the taller half — sets the height the other fills. */}
       <Reveal>
-        <div className="liquid-glass overflow-hidden rounded-lg border border-line">
-          <div className="flex flex-col gap-2.5 p-3 sm:flex-row sm:items-center sm:p-4">
-            <div className="relative shrink-0">
-              <Avatar value={avatar} name={name} size={96} ring />
-              <IconButton
-                size="sm"
-                label="Upload a photo"
-                icon={Upload}
-                onClick={() => fileRef.current?.click()}
-                className="absolute -bottom-1 -right-1 !h-[30px] !w-[30px] rounded-full border border-line bg-surface shadow-md"
-              />
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                hidden
-                onChange={(e) => {
-                  onUpload(e.target.files?.[0]);
-                  e.target.value = ''; // so re-picking the same file still fires
-                }}
-              />
+        <div className="grid gap-2.5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+          <div className="liquid-glass overflow-hidden rounded-lg border border-line">
+            <div className="flex items-center gap-2 p-2.5">
+              <div className="relative shrink-0">
+                <Avatar value={avatar} name={name} size={72} ring />
+                <IconButton
+                  size="sm"
+                  label="Upload a photo"
+                  icon={Upload}
+                  onClick={() => fileRef.current?.click()}
+                  className="absolute -bottom-1 -right-1 !h-[26px] !w-[26px] rounded-full border border-line bg-surface shadow-md"
+                />
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={(e) => {
+                    onUpload(e.target.files?.[0]);
+                    e.target.value = null; // so re-picking the same file still fires
+                  }}
+                />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <label
+                  htmlFor="profile-display-name"
+                  className="text-2xs font-extrabold uppercase tracking-[0.08em] text-ink-3"
+                >
+                  Display name
+                </label>
+                <div className="mt-0.5 flex gap-1">
+                  <input
+                    id="profile-display-name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    maxLength={40}
+                    placeholder="Your name"
+                    autoComplete="name"
+                    className="h-[36px] min-w-0 flex-1 rounded-md border border-line bg-subtle/50 px-1.5 text-sm outline-none focus:border-brand"
+                  />
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    disabled={saving || name === (state.profile.name ?? '')}
+                    onClick={() => persist({ name: name.trim() }, 'Name saved.')}
+                  >
+                    Save
+                  </Button>
+                </div>
+                <p className="mt-0.5 truncate text-2xs text-ink-3">
+                  Shown in the header and on the leaderboard.
+                </p>
+              </div>
             </div>
 
-            <div className="min-w-0 flex-1">
-              <label htmlFor="profile-display-name" className="text-sm font-extrabold">
-                Display name
-              </label>
-              <div className="mt-1 flex flex-wrap gap-1">
-                <input
-                  id="profile-display-name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  maxLength={40}
-                  placeholder="Your name"
-                  autoComplete="name"
-                  className="h-[42px] min-w-0 flex-1 rounded-md border border-line bg-subtle/50 px-1.5 text-base outline-none focus:border-brand"
-                />
-                <Button
-                  variant="primary"
-                  disabled={saving || name === (state.profile.name ?? '')}
-                  onClick={() => persist({ name: name.trim() }, 'Name saved.')}
-                >
-                  Save
-                </Button>
-              </div>
-              <p className="mt-1 text-xs text-ink-3">
-                Shown in the header and on the leaderboard. Leave it blank to stay anonymous.
+            <div className="grid grid-cols-3 gap-px border-t border-line bg-line">
+              <MiniStat icon={Trophy} label="Level" value={stats.level.level} sub={levelTitle(stats.level.level)} />
+              <MiniStat icon={Gauge} label="WPM" value={Math.round(stats.wpm)} sub={`${Math.round(stats.accuracy)}% acc`} />
+              <MiniStat icon={Flame} label="Streak" value={stats.streak} sub={`best ${stats.bestStreak}`} />
+            </div>
+
+            <div className="border-t border-line px-2.5 py-1.5">
+              <ProgressBar value={stats.level.progress} label="Progress to next level" />
+              <p className="mt-0.5 text-2xs text-ink-3">
+                {stats.xp.toLocaleString()} XP · {stats.level.toNext.toLocaleString()} to level{' '}
+                {stats.level.level + 1}
               </p>
             </div>
+          </div>
 
-            <div className="flex shrink-0 gap-1 sm:flex-col">
-              <Stat icon={Trophy} label="Level" value={`${stats.level.level}`} sub={levelTitle(stats.level.level)} />
-              <Stat icon={Gauge} label="Avg WPM" value={Math.round(stats.wpm)} sub={`${Math.round(stats.accuracy)}% acc`} />
-              <Stat icon={Flame} label="Streak" value={stats.streak} sub={`best ${stats.bestStreak}`} />
+          <Card className="p-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-1">
+              <div className="min-w-0">
+                <h2 className="text-sm font-extrabold">Pick an avatar</h2>
+                <p className="text-2xs text-ink-3">
+                  {PRESET_AVATARS.length} to choose from, or upload a photo.
+                </p>
+              </div>
+              {avatar ? (
+                <Button size="sm" variant="ghost" icon={Trash2} onClick={() => persist({ avatar: null }, 'Avatar reset.')}>
+                  Reset
+                </Button>
+              ) : null}
             </div>
-          </div>
 
-          <div className="border-t border-line px-3 py-2 sm:px-4">
-            <ProgressBar value={stats.level.progress} label="Progress to next level" />
-            <p className="mt-1 text-xs text-ink-3">
-              {stats.xp.toLocaleString()} XP · {stats.level.toNext.toLocaleString()} to level {stats.level.level + 1}
-            </p>
-          </div>
-        </div>
-      </Reveal>
-
-      {/* ── Avatar picker ───────────────────────────────────────────────── */}
-      <Reveal delay={0.04}>
-        <Card className="p-2.5 sm:p-3">
-          <div className="flex flex-wrap items-center justify-between gap-1">
-            <div>
-              <h2 className="text-base font-extrabold">Pick an avatar</h2>
-              <p className="text-xs text-ink-3">Choose a tile, or upload a photo with the button above.</p>
-            </div>
-            {avatar ? (
-              <Button size="sm" variant="ghost" icon={Trash2} onClick={() => persist({ avatar: null }, 'Avatar reset.')}>
-                Reset
-              </Button>
-            ) : null}
-          </div>
-
-          <Stagger className="mt-2 grid grid-cols-4 gap-1.5 sm:grid-cols-6 lg:grid-cols-12">
-            {PRESET_AVATARS.map((p) => {
-              const selected = isPreset(avatar) && avatar === toPresetValue(p.id);
-              return (
-                <StaggerItem key={p.id}>
+            <div className="mt-1.5 grid grid-cols-6 gap-1 sm:grid-cols-8">
+              {PRESET_AVATARS.map((p) => {
+                const selected = isPreset(avatar) && avatar === toPresetValue(p.id);
+                return (
                   <button
+                    key={p.id}
                     type="button"
                     onClick={() => persist({ avatar: toPresetValue(p.id) })}
                     aria-pressed={selected}
-                    aria-label={`Use the ${p.id} avatar`}
+                    title={p.label}
+                    aria-label={`Use the ${p.label} avatar`}
                     className={cx(
                       'relative block w-full overflow-hidden rounded-lg transition-transform duration-200',
                       'hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
@@ -196,17 +205,17 @@ export default function Profile() {
                       <motion.span
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
-                        className="absolute bottom-0.5 right-0.5 grid h-[18px] w-[18px] place-items-center rounded-full bg-brand-solid text-brand-ink"
+                        className="absolute bottom-0.5 right-0.5 grid h-[16px] w-[16px] place-items-center rounded-full bg-brand-solid text-brand-ink"
                       >
-                        <Check size={11} strokeWidth={3.4} aria-hidden />
+                        <Check size={10} strokeWidth={3.4} aria-hidden />
                       </motion.span>
                     ) : null}
                   </button>
-                </StaggerItem>
-              );
-            })}
-          </Stagger>
-        </Card>
+                );
+              })}
+            </div>
+          </Card>
+        </div>
       </Reveal>
 
       {/* ── Account ─────────────────────────────────────────────────────── */}
@@ -338,14 +347,14 @@ export default function Profile() {
   );
 }
 
-function Stat({ icon: Icon, label, value, sub }) {
+function MiniStat({ icon: Icon, label, value, sub }) {
   return (
-    <div className="min-w-[92px] flex-1 rounded-md border border-line bg-surface/60 px-1.5 py-1 sm:flex-none">
+    <div className="bg-surface px-1.5 py-1">
       <p className="flex items-center gap-0.5 text-2xs font-extrabold uppercase tracking-[0.08em] text-ink-3">
-        <Icon size={12} strokeWidth={2.4} aria-hidden /> {label}
+        <Icon size={11} strokeWidth={2.4} aria-hidden /> {label}
       </p>
-      <p className="mt-0.5 font-mono text-xl font-medium leading-none tnum">{value}</p>
-      <p className="mt-0.5 truncate text-2xs text-ink-3">{sub}</p>
+      <p className="mt-0.5 font-mono text-lg font-medium leading-none tnum">{value}</p>
+      <p className="truncate text-2xs text-ink-3">{sub}</p>
     </div>
   );
 }
