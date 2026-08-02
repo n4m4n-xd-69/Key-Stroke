@@ -14,6 +14,12 @@ concepts underneath them.**
 
 <br />
 
+### [**▶ Try it live — key-stroke-ai.vercel.app**](https://key-stroke-ai.vercel.app)
+
+<sub>No sign-up needed. A name is enough to start, and your progress follows you if you add an email.</sub>
+
+<br />
+
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
 [![Vite](https://img.shields.io/badge/Vite-6-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vite.dev)
 [![Tailwind](https://img.shields.io/badge/Tailwind-3-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
@@ -27,7 +33,7 @@ concepts underneath them.**
 
 <br />
 
-[**Features**](#-features) · [**Screenshots**](#-screenshots) · [**User journey**](#-user-journey) · [**Architecture**](#-architecture) · [**Setup**](#-installation) · [**Shortcuts**](#️-keyboard-shortcuts) · [**Contributing**](#-contributing)
+[**Live demo**](https://key-stroke-ai.vercel.app) · [**Features**](#-features) · [**Screenshots**](#-screenshots) · [**User journey**](#-user-journey) · [**Architecture**](#-architecture) · [**Setup**](#-installation) · [**Shortcuts**](#️-keyboard-shortcuts) · [**Contributing**](#-contributing)
 
 </div>
 
