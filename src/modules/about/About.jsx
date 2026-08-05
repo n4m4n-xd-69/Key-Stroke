@@ -1,8 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ArrowRight, BookOpen, Braces, Command, Heart, Instagram, Keyboard, LifeBuoy,
-  Mail, Send, Sparkles, Trophy,
+  ArrowRight, BookOpen, Braces, Check, Command, Copy, Heart, Instagram, Keyboard,
+  LifeBuoy, Mail, Send, Sparkles, Trophy,
 } from 'lucide-react';
 import Button from '../../components/ui/Button.jsx';
 import Segmented from '../../components/ui/Segmented.jsx';
@@ -17,6 +17,7 @@ import { curriculumTotals } from '../../lib/curriculum.js';
 import { LANGUAGES, snippetCount } from '../../lib/content.js';
 import { ACHIEVEMENTS } from '../../lib/gamification.js';
 import { cx } from '../../lib/format.js';
+import { useCopyToClipboard } from '../../lib/useCopyToClipboard.js';
 
 const SECTIONS = [
   { value: 'about', label: 'About' },
@@ -347,52 +348,96 @@ function HelpTab() {
 
 /* ── Follow ────────────────────────────────────────────────────────────── */
 
+/** The 34px rounded tile both cards lead with. */
+function CardIcon({ icon: Icon }) {
+  return (
+    <span className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[11px] bg-subtle text-ink-2">
+      <Icon size={17} strokeWidth={2.2} aria-hidden />
+    </span>
+  );
+}
+
 /* Handles live here rather than scattered through the JSX so there is one place
    to correct when they change.
 
    These are the project's accounts, not a person's. Everything public about
    KeyStroke goes through the brand — a maintainer's own handles are not a
    contact channel for it. */
-const LINKS = [
-  {
-    icon: Instagram,
-    label: 'Instagram',
-    handle: '@keystroke.ai',
-    href: 'https://www.instagram.com/keystroke.ai/',
-    blurb: 'Progress notes, new lessons, and the occasional typing-speed brag.',
-  },
-  {
-    icon: Mail,
-    label: 'Email',
-    handle: 'keystroke-ai@proton.me',
-    href: 'mailto:keystroke-ai@proton.me',
-    blurb: 'Bugs, ideas, or anything you want to say directly. It gets read.',
-  },
-];
+const INSTAGRAM = 'https://www.instagram.com/keystroke.ai/';
+const EMAIL = 'keystroke-ai@proton.me';
 
+/**
+ * The two cards do different things, so they are different elements.
+ *
+ * Instagram is a destination and stays an anchor. Email is not — a `mailto:`
+ * opens whatever the OS thinks is a mail client, which on a lot of machines is
+ * nothing at all, or the wrong thing. Copying the address is the action people
+ * actually want, so the card is a button and says so.
+ */
 function FollowTab() {
+  const { copied, copy } = useCopyToClipboard();
+
   return (
     <div className="space-y-2.5">
       <Stagger className="grid gap-2 sm:grid-cols-2">
-        {LINKS.map((l) => (
-          <StaggerItem key={l.label}>
-            <a
-              href={l.href}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="liquid-glass flex h-full items-start gap-1.5 rounded-lg border border-line p-2.5 transition-transform duration-200 hover:-translate-y-px hover:border-line-strong"
-            >
-              <span className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[11px] bg-subtle text-ink-2">
-                <l.icon size={17} strokeWidth={2.2} aria-hidden />
-              </span>
-              <div className="min-w-0">
-                <p className="text-sm font-extrabold">{l.label}</p>
-                <p className="truncate font-mono text-2xs text-brand">{l.handle}</p>
-                <p className="mt-0.5 text-xs leading-relaxed text-ink-3">{l.blurb}</p>
-              </div>
-            </a>
-          </StaggerItem>
-        ))}
+        <StaggerItem>
+          <a
+            href={INSTAGRAM}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="liquid-glass flex h-full items-start gap-1.5 rounded-lg border border-line p-2.5 transition-transform duration-200 hover:-translate-y-px hover:border-line-strong"
+          >
+            <CardIcon icon={Instagram} />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-extrabold">Instagram</p>
+              <p className="truncate font-mono text-2xs text-brand">@keystroke.ai</p>
+              <p className="mt-0.5 text-xs leading-relaxed text-ink-3">
+                Progress notes, new lessons, and the occasional typing-speed brag.
+              </p>
+              <p className="mt-1 flex items-center gap-0.5 text-xs font-extrabold text-brand">
+                Follow us <ArrowRight size={13} strokeWidth={2.4} aria-hidden />
+              </p>
+            </div>
+          </a>
+        </StaggerItem>
+
+        {/* Not a single clickable card like Instagram, deliberately. Copying is
+            the action people want from an address, but navigator.clipboard can
+            refuse — it needs a secure context and a permission the browser is
+            free to deny. If the copy were the only affordance, a refusal would
+            leave the address with nothing to do and no feedback. So the address
+            itself stays a real mailto link and the copy sits beside it. */}
+        <StaggerItem>
+          <div className="liquid-glass flex h-full items-start gap-1.5 rounded-lg border border-line p-2.5 transition-transform duration-200 hover:-translate-y-px hover:border-line-strong">
+            <CardIcon icon={Mail} />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-extrabold">Email</p>
+              <a
+                href={`mailto:${EMAIL}?subject=KeyStroke%20feedback`}
+                className="block truncate font-mono text-2xs text-brand hover:underline"
+              >
+                {EMAIL}
+              </a>
+              <p className="mt-0.5 text-xs leading-relaxed text-ink-3">
+                Bugs, ideas, or anything you want to say directly. It gets read.
+              </p>
+              <button
+                type="button"
+                onClick={() => copy(EMAIL)}
+                title={`Copy ${EMAIL}`}
+                className={cx(
+                  'mt-1 flex items-center gap-0.5 text-xs font-extrabold transition-colors',
+                  copied ? 'text-good' : 'text-brand hover:underline',
+                )}
+              >
+                <span aria-live="polite">{copied ? 'Copied' : 'Copy email'}</span>
+                {copied
+                  ? <Check size={13} strokeWidth={2.6} aria-hidden />
+                  : <Copy size={13} strokeWidth={2.4} aria-hidden />}
+              </button>
+            </div>
+          </div>
+        </StaggerItem>
       </Stagger>
 
       <Reveal delay={0.05}>
@@ -403,18 +448,20 @@ function FollowTab() {
           <p className="mt-1.5 text-base font-extrabold">Tell us what&apos;s missing</p>
           <p className="mx-auto mt-0.5 max-w-[52ch] text-sm leading-relaxed text-ink-2">
             A language you want, a lesson that doesn&apos;t exist yet, a drill that would help, or
-            something that&apos;s simply broken — send it over. It genuinely gets read, and most of
+            something that&apos;s simply broken — open an issue. It genuinely gets read, and most of
             what&apos;s here started as someone asking for it.
           </p>
           <Button
             as="a"
-            href="mailto:keystroke-ai@proton.me?subject=KeyStroke%20feedback"
+            href="https://github.com/n4m4n-xd-69/Key-Stroke/issues/new"
+            target="_blank"
+            rel="noreferrer noopener"
             variant="primary"
             size="sm"
             iconRight={ArrowRight}
             className="mt-2"
           >
-            Email us
+            Open an issue
           </Button>
           <p className={cx('mt-2 flex items-center justify-center gap-0.5 text-2xs font-bold text-ink-3')}>
             Made with Love
