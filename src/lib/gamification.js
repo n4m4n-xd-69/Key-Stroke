@@ -50,7 +50,9 @@ export function levelTitle(level) {
 export function xpForSession({ wpm, accuracy, durationSec, kind = 'text', difficulty = 'normal' }) {
   const base = Math.round(wpm * 0.9 + (durationSec / 60) * 18);
   const accuracyFactor = accuracy >= 98 ? 1.35 : accuracy >= 95 ? 1.15 : accuracy >= 90 ? 1 : 0.7;
-  const kindFactor = kind === 'code' ? 1.25 : 1;
+  // Battlefield sits between prose and code: someone is watching, which is its
+  // own kind of pressure, but the text is ordinary English.
+  const kindFactor = kind === 'code' ? 1.25 : kind === 'battle' ? 1.15 : 1;
   const diffFactor = { easy: 0.85, normal: 1, hard: 1.2, expert: 1.45 }[difficulty] ?? 1;
   return Math.max(5, Math.round(base * accuracyFactor * kindFactor * diffFactor));
 }
@@ -107,6 +109,9 @@ export const ACHIEVEMENTS = [
   { id: 'marathon', name: 'Marathon', hint: 'Practise for 60 minutes total', icon: 'Timer', tier: 'silver', test: (s) => s.totalSeconds >= 3600 },
   { id: 'night-owl', name: 'Night Owl', hint: 'Finish a session after midnight', icon: 'Moon', tier: 'bronze', test: (s) => s.sessions.some((x) => new Date(x.ts).getHours() < 5) },
   { id: 'consistent', name: 'Metronome', hint: 'Finish a run above 90% consistency', icon: 'Activity', tier: 'gold', test: (s) => s.sessions.some((x) => x.consistency >= 90) },
+  { id: 'battle-first', name: 'First Blood', hint: 'Finish a Battlefield', icon: 'Swords', tier: 'bronze', test: (s) => s.battles >= 1 },
+  { id: 'battle-win', name: 'Champion', hint: 'Win a Battlefield', icon: 'Crown', tier: 'silver', test: (s) => s.battleWins >= 1 },
+  { id: 'battle-win-5', name: 'Undisputed', hint: 'Win 5 Battlefields', icon: 'Crown', tier: 'gold', test: (s) => s.battleWins >= 5 },
 ];
 
 export const TIER_STYLES = {

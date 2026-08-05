@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   BadgeInfo, Braces, ChevronRight, Command, Flame, GraduationCap, Home, Keyboard,
-  LineChart, MessageSquare, Trophy,
+  LineChart, Swords, Trophy,
 } from 'lucide-react';
 import { cx } from '../../lib/format.js';
 import { useStats, useStore } from '../../lib/store.jsx';
@@ -17,7 +17,14 @@ import ChatFab from './ChatFab.jsx';
 import AccountMenu from '../../modules/auth/AccountMenu.jsx';
 import AuthModal from '../../modules/auth/AuthModal.jsx';
 
-/* Grouped like the reference: what you do, then what you've done. */
+/* Grouped like the reference: what you do, then what you've done.
+ *
+ * Battlefield takes the slot Chat used to hold rather than adding a ninth item.
+ * The mobile tab bar below renders NAV with `flex-1` per entry, so a ninth would
+ * have given every tab 40px at 360px wide — and Chat was the one entry already
+ * reachable from everywhere else: ChatFab floats the same coach on every route,
+ * and the full /chat page is now in the command palette. The route itself is
+ * untouched; only its place in the nav moved. */
 export const NAV_GROUPS = [
   {
     label: 'Practice',
@@ -26,7 +33,7 @@ export const NAV_GROUPS = [
       { to: '/practice', label: 'Typing', icon: Keyboard },
       { to: '/code', label: 'Code', icon: Braces },
       { to: '/learn', label: 'Learn', icon: GraduationCap },
-      { to: '/chat', label: 'Chat', icon: MessageSquare },
+      { to: '/battle', label: 'Battle', icon: Swords },
     ],
   },
   {

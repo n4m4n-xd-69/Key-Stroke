@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Braces, GraduationCap, Home, Keyboard, LineChart, Moon, Search, Sun, Trophy, Zap,
+  Braces, GraduationCap, Home, Keyboard, LineChart, MessageSquare, Moon, Search, Sun,
+  Swords, Trophy, Zap,
 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { cx } from '../../lib/format.js';
@@ -23,6 +24,11 @@ export default function CommandPalette({ open, onClose }) {
       { id: 'practice', label: 'Start typing practice', icon: Keyboard, group: 'Navigate', run: () => navigate('/practice') },
       { id: 'code', label: 'Start code typing', icon: Braces, group: 'Navigate', run: () => navigate('/code') },
       { id: 'learn', label: 'Open Learn & Practise', icon: GraduationCap, group: 'Navigate', run: () => navigate('/learn') },
+      { id: 'battle', label: 'Open Battlefield — multiplayer', icon: Swords, group: 'Navigate', run: () => navigate('/battle') },
+      // Chat gave up its nav slot to Battlefield. The floating coach reaches the
+      // same model from every route, but the full page owns the thread history
+      // in `chat_messages`, so it needs a way in that is not the FAB.
+      { id: 'chat', label: 'Open the AI coach page', icon: MessageSquare, group: 'Navigate', run: () => navigate('/chat') },
       { id: 'dashboard', label: 'Open Progress dashboard', icon: LineChart, group: 'Navigate', run: () => navigate('/dashboard') },
       { id: 'rewards', label: 'Open Rewards', icon: Trophy, group: 'Navigate', run: () => navigate('/achievements') },
       { id: 'theme', label: `Switch to ${isDark ? 'light' : 'dark'} theme`, icon: isDark ? Sun : Moon, group: 'Settings', run: toggle },

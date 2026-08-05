@@ -73,6 +73,11 @@ function evaluateAchievements(state) {
     level: levelFromXP(state.xp).level,
     lessonCount: state.learn.completed.length,
     totalSeconds: state.sessions.reduce((a, s) => a + s.durationSec, 0),
+    battles: state.sessions.filter((s) => s.mode === 'battle').length,
+    // `rank` is stamped on by `battleRank` once the room settles, which is the
+    // only moment it is known — a run is reported the instant it finishes, well
+    // before anyone can say where it placed.
+    battleWins: state.sessions.filter((s) => s.mode === 'battle' && s.rank === 1).length,
     best: {
       wpm: state.sessions.reduce((a, s) => Math.max(a, s.wpm), 0),
       accuracy: state.sessions.reduce((a, s) => Math.max(a, s.accuracy), 0),
@@ -159,6 +164,27 @@ function reducer(state, action) {
       };
     }
 
+    /**
+     * Stamps a finishing position onto the most recent Battlefield run.
+     *
+     * Split from `session` because the two facts arrive at different times: the
+     * run is reported the moment it ends (so XP lands immediately, even if the
+     * player closes the tab), while the rank only exists once every other player
+     * has finished and the room settles. Re-running the achievement pass here is
+     * what lets "Champion" unlock on the results screen rather than a run later.
+     */
+    case 'battleRank': {
+      const idx = [...state.sessions].reverse().findIndex((s) => s.mode === 'battle');
+      if (idx === -1) return state;
+      const at = state.sessions.length - 1 - idx;
+      if (state.sessions[at].rank === action.rank) return state;
+      const sessions = [...state.sessions];
+      sessions[at] = { ...sessions[at], rank: action.rank };
+      const next = { ...state, sessions };
+      const { unlocked, fresh } = evaluateAchievements(next);
+      return { ...next, achievements: unlocked, _fresh: fresh };
+    }
+
     case 'setting':
       return { ...state, settings: { ...state.settings, [action.key]: action.value } };
 
@@ -213,6 +239,7 @@ export function StoreProvider({ children }) {
   const api = useMemo(
     () => ({
       recordSession: (session) => dispatch({ type: 'session', session }),
+      recordBattleRank: (rank) => dispatch({ type: 'battleRank', rank }),
       completeLesson: (lessonId) => dispatch({ type: 'lesson', lessonId }),
       recordQuiz: (lessonId, passed, score) => dispatch({ type: 'quiz', lessonId, passed, score }),
       setSetting: (key, value) => dispatch({ type: 'setting', key, value }),

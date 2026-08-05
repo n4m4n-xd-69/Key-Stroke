@@ -28,3 +28,4 @@ supabase/.temp/
 # import.meta.env. Ignoring it broke the hosted build, which could not resolve
 # "./config.js" from src/lib/ai-runner.js. Keys live in .env.local (ignored
 # above) and in the host's environment-variable settings.
+.gstack/

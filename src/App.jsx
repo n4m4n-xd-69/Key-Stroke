@@ -13,6 +13,8 @@ const LessonView = lazy(() => import('./modules/learn/LessonView.jsx'));
 const Dashboard = lazy(() => import('./modules/dashboard/Dashboard.jsx'));
 const Achievements = lazy(() => import('./modules/achievements/Achievements.jsx'));
 const AIChat = lazy(() => import('./modules/chat/AIChat.jsx'));
+const Battle = lazy(() => import('./modules/battle/Battle.jsx'));
+const BattleRoom = lazy(() => import('./modules/battle/BattleRoom.jsx'));
 const Profile = lazy(() => import('./modules/profile/Profile.jsx'));
 const About = lazy(() => import('./modules/about/About.jsx'));
 const AdminPanel = lazy(() => import('./modules/admin/AdminPanel.jsx'));
@@ -31,6 +33,13 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/achievements" element={<Achievements />} />
           <Route path="/chat" element={<AIChat />} />
+          {/* One route for every phase of a room, per PRD-BATTLEFIELD §16.1: the
+              phase is a function of the room's status, which is durable, so a
+              refresh mid-match reconstructs the right screen instead of relying
+              on a URL that can disagree with the room. `/battle` alone is the
+              create-or-join hub. */}
+          <Route path="/battle" element={<Battle />} />
+          <Route path="/battle/:pin" element={<BattleRoom />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/about" element={<About />} />
           {/* Reached from the account menu rather than the nav: the mobile
