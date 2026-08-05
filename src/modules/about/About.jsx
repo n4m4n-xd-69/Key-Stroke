@@ -1,8 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ArrowRight, BookOpen, Braces, Command, Github, Heart, Keyboard, LifeBuoy,
-  Send, Sparkles, Trophy, Twitter,
+  ArrowRight, BookOpen, Braces, Command, Heart, Instagram, Keyboard, LifeBuoy,
+  Mail, Send, Sparkles, Trophy,
 } from 'lucide-react';
 import Button from '../../components/ui/Button.jsx';
 import Segmented from '../../components/ui/Segmented.jsx';
@@ -348,10 +348,26 @@ function HelpTab() {
 /* ── Follow ────────────────────────────────────────────────────────────── */
 
 /* Handles live here rather than scattered through the JSX so there is one place
-   to correct when they change. */
+   to correct when they change.
+
+   These are the project's accounts, not a person's. Everything public about
+   KeyStroke goes through the brand — a maintainer's own handles are not a
+   contact channel for it. */
 const LINKS = [
-  { icon: Github, label: 'GitHub', handle: 'n4m4n-xd-69/Key-Stroke', href: 'https://github.com/n4m4n-xd-69/Key-Stroke', blurb: 'The source, the issues, and every commit behind this build.' },
-  { icon: Twitter, label: 'X', handle: '@n4m4n', href: 'https://x.com/n4m4n', blurb: 'Progress notes and the occasional typing-speed brag.' },
+  {
+    icon: Instagram,
+    label: 'Instagram',
+    handle: '@keystroke.ai',
+    href: 'https://www.instagram.com/keystroke.ai/',
+    blurb: 'Progress notes, new lessons, and the occasional typing-speed brag.',
+  },
+  {
+    icon: Mail,
+    label: 'Email',
+    handle: 'keystroke-ai@proton.me',
+    href: 'mailto:keystroke-ai@proton.me',
+    blurb: 'Bugs, ideas, or anything you want to say directly. It gets read.',
+  },
 ];
 
 function FollowTab() {
@@ -387,20 +403,18 @@ function FollowTab() {
           <p className="mt-1.5 text-base font-extrabold">Tell us what&apos;s missing</p>
           <p className="mx-auto mt-0.5 max-w-[52ch] text-sm leading-relaxed text-ink-2">
             A language you want, a lesson that doesn&apos;t exist yet, a drill that would help, or
-            something that&apos;s simply broken — open an issue. It genuinely gets read, and most of
+            something that&apos;s simply broken — send it over. It genuinely gets read, and most of
             what&apos;s here started as someone asking for it.
           </p>
           <Button
             as="a"
-            href="https://github.com/n4m4n-xd-69/Key-Stroke/issues/new"
-            target="_blank"
-            rel="noreferrer noopener"
+            href="mailto:keystroke-ai@proton.me?subject=KeyStroke%20feedback"
             variant="primary"
             size="sm"
             iconRight={ArrowRight}
             className="mt-2"
           >
-            Open an issue
+            Email us
           </Button>
           <p className={cx('mt-2 flex items-center justify-center gap-0.5 text-2xs font-bold text-ink-3')}>
             Made with Love
